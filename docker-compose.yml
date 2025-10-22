@@ -1,0 +1,25 @@
+services:
+  client:
+    build: ./client
+    container_name: client
+    ports:
+      - 5173:5173
+    env_file:
+      - ./client/.env
+    depends_on:
+      - server
+    networks:
+      - app-network
+  server:
+    build: ./server
+    container_name: server
+    ports:
+      - 8000:8000
+    env_file:
+      - ./server/.env
+    networks:
+      - app-network
+      
+networks:
+  app-network:
+    driver: bridge
