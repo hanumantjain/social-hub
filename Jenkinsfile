@@ -1,6 +1,10 @@
 pipeline {
     agent any
 
+    tools {
+        nodejs 'node'
+    }
+
     environment {
         AWS_DEFAULT_REGION = 'us-east-1'
         S3_BUCKET = 'social-frontend-app'
