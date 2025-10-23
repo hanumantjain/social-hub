@@ -6,3 +6,4 @@ passlib[argon2]
 python-multipart
 python-dotenv
 psycopg2-binary
+mangum

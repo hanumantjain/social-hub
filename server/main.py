@@ -7,6 +7,7 @@ from routers import auth
 from models import *  # Import all models
 from dotenv import load_dotenv
 import os
+from mangum import Mangum
 
 # Load environment variables
 load_dotenv()
@@ -52,3 +53,5 @@ def health_check(db: Session = Depends(get_db)):
         return {"status": "Database connection successful"}
     except Exception as e:
         return {"status": "Database connection failed", "error": str(e)}
+
+handler = Mangum(app)
