@@ -3,12 +3,10 @@ import { useNavigate } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import { authAPI, tokenManager } from "../services/api";
 import type { User } from "../services/api";
-import { mockProfileAPI, type ProfileData } from "../data/mockProfileData";
 
 const Profile = () => {
   const navigate = useNavigate();
   const [user, setUser] = useState<User | null>(null);
-  const [profileData, setProfileData] = useState<ProfileData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
   const [showEditModal, setShowEditModal] = useState(false);
@@ -29,17 +27,11 @@ const Profile = () => {
       }
 
       try {
-        // Fetch both user data and profile data
-        const [userData, profileData] = await Promise.all([
-          authAPI.getCurrentUser(token),
-          mockProfileAPI.getProfile()
-        ]);
-        
+        const userData = await authAPI.getCurrentUser(token);
         setUser(userData);
-        setProfileData(profileData);
-        setFullName(profileData.full_name || "");
-        setUsername(profileData.username || "");
-        setBio(profileData.bio || "");
+        setFullName(userData.full_name || "");
+        setUsername(userData.username || "");
+        setBio("");
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to load profile");
         // If token is invalid, redirect to login
@@ -60,14 +52,10 @@ const Profile = () => {
     setError("");
     
     try {
-      // Update profile using mock API
-      const updatedProfile = await mockProfileAPI.updateProfile({
-        full_name: fullName,
-        username: username,
-        bio: bio
-      });
+      // Here you would typically call an API to update the profile
+      // For now, we'll just simulate a successful update
+      await new Promise(resolve => setTimeout(resolve, 1000));
       
-      setProfileData(updatedProfile);
       setSaveSuccess(true);
       setTimeout(() => {
         setSaveSuccess(false);
@@ -82,9 +70,9 @@ const Profile = () => {
 
   const handleCancelEdit = () => {
     setShowEditModal(false);
-    setFullName(profileData?.full_name || "");
-    setUsername(profileData?.username || "");
-    setBio(profileData?.bio || "");
+    setFullName(user?.full_name || "");
+    setUsername(user?.username || "");
+    setBio("");
   };
 
   const handleChangePhoto = () => {
@@ -92,27 +80,27 @@ const Profile = () => {
     console.log("Change profile photo clicked");
   };
 
-  // if (isLoading) {
-  //   return (
-  //     <div>
-  //       <Navbar />
-  //       <div className="flex items-center justify-center h-[calc(100vh-4rem)]">
-  //         <div className="text-gray-600">Loading profile...</div>
-  //       </div>
-  //     </div>
-  //   );
-  // }
+  if (isLoading) {
+    return (
+      <div>
+        <Navbar />
+        <div className="flex items-center justify-center h-[calc(100vh-4rem)]">
+          <div className="text-gray-600">Loading profile...</div>
+        </div>
+      </div>
+    );
+  }
 
-  // if (error) {
-  //   return (
-  //     <div>
-  //       <Navbar />
-  //       <div className="flex items-center justify-center h-[calc(100vh-4rem)]">
-  //         <div className="text-red-600">{error}</div>
-  //       </div>
-  //     </div>
-  //   );
-  // }
+  if (error) {
+    return (
+      <div>
+        <Navbar />
+        <div className="flex items-center justify-center h-[calc(100vh-4rem)]">
+          <div className="text-red-600">{error}</div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen">
@@ -125,7 +113,7 @@ const Profile = () => {
             {/* Profile Picture */}
             <div className="flex-shrink-0 relative">
               <div className="w-32 h-32 bg-gradient-to-br from-purple-400 to-pink-400 rounded-full flex items-center justify-center text-white text-4xl font-bold">
-                {profileData?.full_name?.charAt(0)?.toUpperCase() || 'U'}
+                {user?.full_name?.charAt(0)?.toUpperCase() || 'U'}
               </div>
               {/* Small change photo button */}
               <button
@@ -140,7 +128,7 @@ const Profile = () => {
             <div className="flex-1 min-w-0">
               <div className="flex flex-col sm:flex-row sm:items-center sm:space-x-4 mb-4">
                 <h1 className="text-2xl font-light text-gray-900 mb-2 sm:mb-0">
-                  {profileData?.username || 'username'}
+                  {user?.username || 'username'}
                 </h1>
                  <button 
                    onClick={() => setShowEditModal(true)}
@@ -152,15 +140,15 @@ const Profile = () => {
               {/* Stats */}
               <div className="flex space-x-8 mb-4">
                 <div className="text-center">
-                  <div className="text-lg font-semibold text-gray-900">{profileData?.posts_count || 0}</div>
+                  <div className="text-lg font-semibold text-gray-900">0</div>
                   <div className="text-sm text-gray-600">posts</div>
                 </div>
                 <div className="text-center">
-                  <div className="text-lg font-semibold text-gray-900">{profileData?.followers_count || 0}</div>
+                  <div className="text-lg font-semibold text-gray-900">0</div>
                   <div className="text-sm text-gray-600">followers</div>
                 </div>
                 <div className="text-center">
-                  <div className="text-lg font-semibold text-gray-900">{profileData?.following_count || 0}</div>
+                  <div className="text-lg font-semibold text-gray-900">0</div>
                   <div className="text-sm text-gray-600">following</div>
                 </div>
               </div>
@@ -168,21 +156,17 @@ const Profile = () => {
               {/* Bio */}
               <div className="space-y-1">
                 <div className="text-sm font-semibold text-gray-900">
-                  {profileData?.full_name || 'Full Name'}
+                  {user?.full_name || 'Full Name'}
                 </div>
-                <div className="text-sm text-gray-900 whitespace-pre-line">
-                  {profileData?.bio || 'No bio yet'}
+                <div className="text-sm text-gray-900">
+                  Welcome to my Instagram profile! 📸
                 </div>
-                {profileData?.location && (
-                  <div className="text-sm text-gray-900">
-                    📍 {profileData.location}
-                  </div>
-                )}
-                {profileData?.website && (
-                  <div className="text-sm text-gray-900">
-                    🌐 <a href={profileData.website} className="text-blue-600 hover:underline" target="_blank" rel="noopener noreferrer">{profileData.website}</a>
-                  </div>
-                )}
+                <div className="text-sm text-gray-900">
+                  📍 New York, NY
+                </div>
+                <div className="text-sm text-gray-900">
+                  🌐 <a href="#" className="text-blue-600 hover:underline">www.example.com</a>
+                </div>
               </div>
             </div>
           </div>
@@ -210,27 +194,18 @@ const Profile = () => {
           
           {/* Posts Grid */}
           <div className="p-6">
-            {profileData ? (
+            {user ? (
               <div className="grid grid-cols-3 gap-1">
-                {profileData.posts_count > 0 ? (
-                  // Show mock posts
-                  [1, 2, 3, 4, 5, 6, 7, 8, 9].map((i) => (
-                    <div key={i} className="aspect-square bg-gradient-to-br from-gray-200 to-gray-300 rounded-lg flex items-center justify-center text-gray-500 text-2xl font-bold hover:opacity-90 transition-opacity cursor-pointer">
-                      {i}
-                    </div>
-                  ))
-                ) : (
-                  // Empty state - no posts yet
-                  <div className="col-span-3 text-center py-12">
-                    <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                      <svg className="w-8 h-8 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" />
-                      </svg>
-                    </div>
-                    <h3 className="text-lg font-medium text-gray-900 mb-2">No posts yet</h3>
-                    <p className="text-gray-500">When you share photos and videos, they'll appear on your profile.</p>
+                {/* Empty state - no posts yet */}
+                <div className="col-span-3 text-center py-12">
+                  <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <svg className="w-8 h-8 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" />
+                    </svg>
                   </div>
-                )}
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">No posts yet</h3>
+                  <p className="text-gray-500">When you share photos and videos, they'll appear on your profile.</p>
+                </div>
               </div>
             ) : (
               <div className="text-center py-12">
