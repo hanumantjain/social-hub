@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import Navbar from "../components/Navbar";
-import { authAPI } from "../services/api";
+import { authAPI, tokenManager } from "../services/api";
 
 const Signup = () => {
   const navigate = useNavigate();
@@ -30,7 +30,12 @@ const Signup = () => {
         username, 
         password 
       });
-      navigate("/login"); // Redirect to login after successful signup
+      
+      // Automatically log in the user after successful signup
+      const loginResponse = await authAPI.login({ username, password });
+      tokenManager.saveToken(loginResponse.access_token);
+      
+      navigate("/"); // Redirect to homepage after successful signup and login
     } catch (err) {
       setError(err instanceof Error ? err.message : "Signup failed");
     } finally {
