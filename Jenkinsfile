@@ -24,27 +24,20 @@ pipeline {
                 }
             }
         }
-        stage('Deploy to S3') {
-    steps {
-        withAWS(credentials: 'aws-credentials-id', region: "${AWS_DEFAULT_REGION}") {
-            dir('client/build') {
-                sh '''
-                    echo "Using AWS account:"
-                    aws sts get-caller-identity
-
-                    echo "Listing current directory before upload:"
-                    ls -lah
-
-                    echo "Uploading to S3..."
-                    aws s3 sync . s3://${S3_BUCKET} --delete --debug
-
-                    echo "Verifying uploaded files..."
-                    aws s3 ls s3://${S3_BUCKET} --recursive
-                '''
+        stage('Deploy to S3') {     
+            steps {
+                withAWS(credentials: 'aws-credentials-id', region: "${AWS_DEFAULT_REGION}") {
+                    dir('client/dist') {
+                        sh '''
+                            echo "Listing build output..."
+                            ls -lah
+                            aws s3 sync . s3://${S3_BUCKET} --delete
+                        '''
+                    }
+                }
             }
         }
-    }
-}
+
 
         
     }
