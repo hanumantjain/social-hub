@@ -26,7 +26,7 @@ pipeline {
         }
         stage('Deploy to S3') {
             steps {
-                withAWS(credentials: 'aws-credentials-id', region: '${AWS_DEFAULT_REGION}') {
+                withAWS(credentials: 'aws-credentials-id', region: "${AWS_DEFAULT_REGION}") {
                     dir('client/build') {
                         sh 'aws s3 sync . s3://${S3_BUCKET} --delete'
                     }
