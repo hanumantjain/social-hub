@@ -84,7 +84,7 @@ pipeline {
         }    
     }
 
-    pos {
+    post {
         success {
             echo 'Frontend and backend successfully deployed!'
         }
