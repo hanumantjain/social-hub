@@ -27,7 +27,7 @@ pipeline {
                     sh '''
                         echo "Building React frontend..."
                         npm install
-                        npm run build
+                        npm run build --mode production
                     '''
                 }
             }
