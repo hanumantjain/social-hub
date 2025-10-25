@@ -91,5 +91,9 @@ pipeline {
         failure {
             echo 'Build or deployment failed.'
         }
+        always {
+            echo 'Cleanup workspace...'
+            cleanWs()
+        }
     }
 }
