@@ -80,11 +80,20 @@ def signup(user: UserCreate, db: Session = Depends(get_db)):
             detail="Username already registered"
         )
     
+    # Check if email already exists
+    db_user_email = db.query(User).filter(User.email == user.email).first()
+    if db_user_email:
+        raise HTTPException(
+            status_code=400,
+            detail="Email already registered"
+        )
+    
     # Create new user
     hashed_password = get_password_hash(user.password)
     db_user = User(
         full_name=user.full_name,
         username=user.username,
+        email=user.email,
         password=hashed_password
     )
     db.add(db_user)

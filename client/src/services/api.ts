@@ -6,6 +6,7 @@ export interface User {
   id: number;
   full_name: string;
   username: string;
+  email: string;
   created_at: string;
   updated_at: string;
 }
@@ -18,6 +19,7 @@ export interface LoginRequest {
 export interface SignupRequest {
   full_name: string;
   username: string;
+  email: string;
   password: string;
 }
 

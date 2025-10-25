@@ -9,6 +9,7 @@ const Signup = () => {
   const [error, setError] = useState("");
   const [name, setName] = useState("");
   const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
 
@@ -27,7 +28,8 @@ const Signup = () => {
     try {
       await authAPI.signup({ 
         full_name: name, 
-        username, 
+        username,
+        email,
         password 
       });
       
@@ -116,6 +118,20 @@ const Signup = () => {
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
                   placeholder="johndoe123"
+                  className="w-full px-4 py-3 bg-white border border-gray-300 rounded-lg text-gray-900 placeholder-gray-400 focus:outline-none focus:border-gray-900 focus:ring-2 focus:ring-gray-900/20"
+                  required
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-700 block">
+                  Email
+                </label>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="john@example.com"
                   className="w-full px-4 py-3 bg-white border border-gray-300 rounded-lg text-gray-900 placeholder-gray-400 focus:outline-none focus:border-gray-900 focus:ring-2 focus:ring-gray-900/20"
                   required
                 />

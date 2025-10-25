@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, EmailStr
 from datetime import datetime
 from typing import Optional
 
@@ -6,6 +6,7 @@ from typing import Optional
 class UserBase(BaseModel):
     full_name: str
     username: str
+    email: EmailStr
 
 # User Creation Schema
 class UserCreate(UserBase):
@@ -38,4 +39,5 @@ class TokenData(BaseModel):
 class UserUpdate(BaseModel):
     full_name: Optional[str] = None
     username: Optional[str] = None
+    email: Optional[EmailStr] = None
     password: Optional[str] = None
