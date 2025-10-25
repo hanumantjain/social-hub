@@ -27,6 +27,7 @@ Resources:
             Method: ANY
             RestApiId: !Ref SocialFastAPIFunction
             Cors:
-              AllowOrigins:"'https://social.hanumantjain.tech'"
-              AllowMethods: "GET, POST, PUT, DELETE, OPTIONS"
-              AllowHeaders: "*"
+              AllowOrigins: "'https://social.hanumantjain.tech,http://localhost:5173'"
+              AllowMethods: "'GET,POST,PUT,DELETE,OPTIONS'"
+              AllowHeaders: "'*'"
+              AllowCredentials: true
