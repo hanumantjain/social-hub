@@ -10,7 +10,7 @@ Resources:
       Handler: main.handler
       Runtime: python3.12
       MemorySize: 512
-      Timout: 60
+      Timeout: 60
       Environment:
         Variables:
           DATABASE_URL: !Sub "{{resolve:ssm:/socialapp/DATABASE_URL}}"
@@ -23,4 +23,4 @@ Resources:
           Type: Api
           Properties:
             Path: /
-            Methond: ANY
+            Method: ANY
