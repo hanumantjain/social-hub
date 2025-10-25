@@ -13,8 +13,8 @@ Resources:
       Timeout: 60
       Environment:
         Variables:
-          DATABASE_URL: !Sub "{{resolve:ssm:/socialapp/DATABASE_URL}}"
-          SECRET_KEY: !Sub "{{resolve:ssm:/socialapp/SECRET_KEY}}"
+          DATABASE_URL: !Sub "{{resolve:ssm-secure:/socialapp/DATABASE_URL}}"
+          SECRET_KEY: !Sub "{{resolve:ssm-secure:/socialapp/SECRET_KEY}}"
           ALGORITHM: !Sub "{{resolve:ssm:/socialapp/ALGORITHM}}"
           ACCESS_TOKEN_EXPIRE_MINUTES: !Sub "{{resolve:ssm:/socialapp/ACCESS_TOKEN_EXPIRE_MINUTES}}"
           CORS_ORIGINS: !Sub "{{resolve:ssm:/socialapp/CORS_ORIGINS}}"
