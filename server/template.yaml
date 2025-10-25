@@ -6,6 +6,7 @@ Resources:
   SocialFastAPIFunction:
     Type: AWS::Serverless::Function
     Properties:
+      Role: arn:aws:iam::034362065521:role/social-fastapi-lambda-role
       CodeUri: .
       Handler: main.handler
       Runtime: python3.12
