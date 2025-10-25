@@ -26,7 +26,7 @@ pipeline {
                 dir('client') {
                     sh '''
                         echo "Building React frontend..."
-                        npm ci
+                        npm install
                         npm run build
                     '''
                 }
