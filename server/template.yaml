@@ -23,5 +23,5 @@ Resources:
         ApiGatewayEvent:
           Type: Api
           Properties:
-            Path: /
+            Path: /{proxy+}
             Method: ANY
