@@ -25,9 +25,11 @@ Resources:
           Properties:
             Path: /{proxy+}
             Method: ANY
-            RestApiId: !Ref SocialFastAPIFunction
-            Cors:
-              AllowOrigin: "'https://social.hanumantjain.tech'"
-              AllowMethods: "'GET,POST,PUT,DELETE,OPTIONS'"
-              AllowHeaders: "'*'"
-              AllowCredentials: true
+
+Globals:
+  Api:
+    Cors:
+      AllowOrigin: "https://social.hanumantjain.tech,http://localhost:5173"
+      AllowMethods: "GET,POST,PUT,DELETE,OPTIONS"
+      AllowHeaders: "*"
+      AllowCredentials: true
