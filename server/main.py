@@ -17,16 +17,23 @@ app = FastAPI()
 @app.on_event("startup")
 async def startup_event():
     print("Lambda cold start: initializing FastAPI application")
-    # Database migrations should be done externally (Alembic, etc.)
-    pass
+    print("Creating database tables...")
+    Base.metadata.create_all(bind=engine)
+    print("Database initialization complete!")
 
 # CORS configuration
+cors_origins = [
+    "http://localhost:5173",
+    "https://social.hanumantjain.tech",
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Replace with your frontend URLs in prod
+    allow_origins=cors_origins,
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
     allow_headers=["*"],
+    expose_headers=["*"],
 )
 
 # Routers
