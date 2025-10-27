@@ -19,6 +19,12 @@ Resources:
       Runtime: python3.12
       MemorySize: 512
       Timeout: 60
+      VpcConfig:
+        SecurityGroupIds:
+          - !Sub "{{resolve:ssm:/socialapp/SecurityGroupId}}"
+        SubnetIds:
+          - !Sub "{{resolve:ssm:/socialapp/SubnetPrivateA}}"
+          - !Sub "{{resolve:ssm:/socialapp/SubnetPrivateB}}"
       Environment:
         Variables:
           DATABASE_URL: !Sub "{{resolve:ssm:/socialapp/DATABASE_URL}}"
