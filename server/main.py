@@ -39,6 +39,12 @@ app.add_middleware(
 # Routers
 app.include_router(auth.router, prefix="/auth", tags=["authentication"])
 
+# Explicit OPTIONS handler for CORS preflight
+@app.options("/{full_path:path}")
+async def options_handler(full_path: str):
+    """Handle preflight OPTIONS requests for CORS"""
+    return {"message": "OK"}
+
 @app.get("/")
 def read_root():
     return {"message": "Hello from FastAPI on AWS Lambda"}
