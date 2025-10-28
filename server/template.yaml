@@ -6,8 +6,8 @@ Globals:
   Api:
     Cors:
       AllowOrigin: "'https://social.hanumantjain.tech'"
-      AllowHeaders: "'*'"
-      AllowMethods: "'*'"
+      AllowHeaders: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token,Accept'"
+      AllowMethods: "'GET,POST,PUT,DELETE,OPTIONS,PATCH'"
 
 Resources:
   SocialFastAPIFunction:

@@ -143,5 +143,5 @@ def health_check(db: Session = Depends(get_db)):
     except Exception as e:
         return {"status": "Database connection failed", "error": str(e)}
 
-# Lambda handler
-handler = Mangum(app)
+# Lambda handler with CORS support
+handler = Mangum(app, lifespan="off")
