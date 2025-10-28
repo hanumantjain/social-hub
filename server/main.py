@@ -87,26 +87,13 @@ async def options_handler(full_path: str):
 def read_root():
     return {"message": "Hello from FastAPI on AWS Lambda"}
 
-@app.get("/debug/routes")
-def debug_routes():
-    """Debug endpoint to see all registered routes"""
-    routes = []
-    for route in app.routes:
-        if hasattr(route, 'methods') and hasattr(route, 'path'):
-            routes.append({
-                "path": route.path,
-                "methods": list(route.methods),
-                "name": route.name
-            })
-    return {"routes": routes}
-
-@app.get("/debug/posts")
-def debug_posts(db: Session = Depends(get_db)):
-    """Debug endpoint to see all posts in database"""
+@app.get("/api/posts")
+def get_posts_workaround(db: Session = Depends(get_db)):
+    """Temporary workaround endpoint for getting posts"""
     from models.post import Post
     from models.user import User
     
-    posts = db.query(Post).all()
+    posts = db.query(Post).order_by(Post.created_at.desc()).limit(20).all()
     result = []
     
     for post in posts:
@@ -115,16 +102,38 @@ def debug_posts(db: Session = Depends(get_db)):
             "id": post.id,
             "user_id": post.user_id,
             "username": user.username if user else None,
+            "user_full_name": user.full_name if user else None,
             "image_url": post.image_url,
             "caption": post.caption,
-            "created_at": str(post.created_at),
-            "updated_at": str(post.updated_at)
+            "created_at": post.created_at.isoformat(),
+            "updated_at": post.updated_at.isoformat()
         })
     
-    return {
-        "total_posts": len(result),
-        "posts": result
-    }
+    return result
+
+@app.get("/api/posts/user/{user_id}")
+def get_user_posts_workaround(user_id: int, db: Session = Depends(get_db)):
+    """Temporary workaround endpoint for getting user posts"""
+    from models.post import Post
+    from models.user import User
+    
+    posts = db.query(Post).filter(Post.user_id == user_id).order_by(Post.created_at.desc()).all()
+    result = []
+    
+    for post in posts:
+        user = db.query(User).filter(User.id == post.user_id).first()
+        result.append({
+            "id": post.id,
+            "user_id": post.user_id,
+            "username": user.username if user else None,
+            "user_full_name": user.full_name if user else None,
+            "image_url": post.image_url,
+            "caption": post.caption,
+            "created_at": post.created_at.isoformat(),
+            "updated_at": post.updated_at.isoformat()
+        })
+    
+    return result
 
 @app.get("/health")
 def health_check(db: Session = Depends(get_db)):

@@ -131,7 +131,7 @@ export const authAPI = {
 export const postsAPI = {
   // Get all posts (feed)
   async getAllPosts(): Promise<Post[]> {
-    const response = await fetch(`${API_BASE_URL}/posts`);
+    const response = await fetch(`${API_BASE_URL}/api/posts`);
 
     if (!response.ok) {
       const error: ApiError = await response.json();
@@ -143,7 +143,7 @@ export const postsAPI = {
 
   // Get posts by user
   async getUserPosts(userId: number): Promise<Post[]> {
-    const response = await fetch(`${API_BASE_URL}/posts/user/${userId}`);
+    const response = await fetch(`${API_BASE_URL}/api/posts/user/${userId}`);
 
     if (!response.ok) {
       const error: ApiError = await response.json();

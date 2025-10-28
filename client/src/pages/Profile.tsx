@@ -1,12 +1,13 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Navbar from "../components/Navbar";
-import { authAPI, tokenManager } from "../services/api";
-import type { User, UpdateProfileRequest } from "../services/api";
+import { authAPI, tokenManager, postsAPI } from "../services/api";
+import type { User, UpdateProfileRequest, Post } from "../services/api";
 
 const Profile = () => {
   const navigate = useNavigate();
   const [user, setUser] = useState<User | null>(null);
+  const [posts, setPosts] = useState<Post[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
   const [showEditModal, setShowEditModal] = useState(false);
@@ -32,6 +33,17 @@ const Profile = () => {
         setFullName(userData.full_name || "");
         setUsername(userData.username || "");
         setBio(userData.bio || "");
+
+        // Fetch user's posts
+        if (userData.id) {
+          try {
+            const userPosts = await postsAPI.getUserPosts(userData.id);
+            setPosts(userPosts);
+          } catch (postsErr) {
+            console.error("Failed to fetch user posts:", postsErr);
+            // Don't set error state for posts failure, just log it
+          }
+        }
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to load profile");
         // If token is invalid, redirect to login
@@ -161,7 +173,7 @@ const Profile = () => {
               {/* Stats */}
               <div className="flex space-x-8 mb-4">
                 <div className="text-center">
-                  <div className="text-lg font-semibold text-gray-900">0</div>
+                  <div className="text-lg font-semibold text-gray-900">{posts.length}</div>
                   <div className="text-sm text-gray-600">posts</div>
                 </div>
                 <div className="text-center">
@@ -216,22 +228,44 @@ const Profile = () => {
           
           {/* Posts Grid */}
           <div className="p-6">
-            {user ? (
+            {posts.length > 0 ? (
               <div className="grid grid-cols-3 gap-1">
-                {/* Empty state - no posts yet */}
-                <div className="col-span-3 text-center py-12">
-                  <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <svg className="w-8 h-8 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" />
-                    </svg>
+                {posts.map((post) => (
+                  <div
+                    key={post.id}
+                    className="relative aspect-square overflow-hidden bg-gray-100 cursor-pointer group"
+                  >
+                    <img
+                      src={post.image_url}
+                      alt={post.caption || 'Post'}
+                      className="w-full h-full object-cover transition-transform group-hover:scale-105"
+                    />
+                    {/* Hover overlay with caption */}
+                    {post.caption && (
+                      <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-50 transition-all flex items-center justify-center opacity-0 group-hover:opacity-100">
+                        <p className="text-white text-sm text-center px-4 line-clamp-3">
+                          {post.caption}
+                        </p>
+                      </div>
+                    )}
                   </div>
-                  <h3 className="text-lg font-medium text-gray-900 mb-2">No posts yet</h3>
-                  <p className="text-gray-500">When you share photos and videos, they'll appear on your profile.</p>
-                </div>
+                ))}
               </div>
             ) : (
               <div className="text-center py-12">
-                <div className="text-gray-500">Loading profile...</div>
+                <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <svg className="w-8 h-8 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" />
+                  </svg>
+                </div>
+                <h3 className="text-lg font-medium text-gray-900 mb-2">No posts yet</h3>
+                <p className="text-gray-500 mb-4">When you share photos and videos, they'll appear on your profile.</p>
+                <button
+                  onClick={() => navigate('/upload')}
+                  className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-md text-sm font-medium transition-colors"
+                >
+                  Share Your First Photo
+                </button>
               </div>
             )}
           </div>
