@@ -25,9 +25,9 @@ const Upload = () => {
       return;
     }
 
-    // Validate file size (max 10MB)
-    if (file.size > 10 * 1024 * 1024) {
-      setError("File size must not exceed 10MB. Please choose a smaller image.");
+    // Validate file size (max 8MB for API Gateway compatibility)
+    if (file.size > 8 * 1024 * 1024) {
+      setError("File size must not exceed 8MB. Please choose a smaller image.");
       return;
     }
 
@@ -81,8 +81,8 @@ const Upload = () => {
     }
 
     // Double-check file size before upload
-    if (selectedFile.size > 10 * 1024 * 1024) {
-      setError("File size must not exceed 10MB. Please choose a smaller image.");
+    if (selectedFile.size > 8 * 1024 * 1024) {
+      setError("File size must not exceed 8MB. Please choose a smaller image.");
       return;
     }
 
@@ -235,7 +235,7 @@ const Upload = () => {
                   />
                 </label>
                 <p className="mt-4 text-xs text-gray-500">
-                  PNG, JPG, GIF, WEBP up to 10MB
+                  PNG, JPG, GIF, WEBP up to 8MB
                 </p>
               </div>
             ) : (
