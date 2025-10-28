@@ -14,11 +14,12 @@ class S3Handler:
     
     def __init__(self):
         """Initialize S3 client with credentials from environment"""
+        self.region = os.getenv('AWS_REGION', 'us-east-1')
         self.s3_client = boto3.client(
             's3',
             aws_access_key_id=os.getenv('AWS_ACCESS_KEY_ID'),
             aws_secret_access_key=os.getenv('AWS_SECRET_ACCESS_KEY'),
-            region_name=os.getenv('AWS_REGION', 'us-east-1')
+            region_name=self.region
         )
         self.bucket_name = os.getenv('S3_BUCKET_NAME')
         self.cloudfront_domain = os.getenv('CLOUDFRONT_DOMAIN')  # Optional
@@ -141,6 +142,59 @@ class S3Handler:
         except ClientError as e:
             logger.error(f"Failed to generate presigned URL: {str(e)}")
             return None
+    
+    def generate_presigned_upload_url(self, filename: str, content_type: str, expires_in: int = 3600) -> dict:
+        """
+        Generate a pre-signed URL for direct upload to S3 from the browser
+        
+        Args:
+            filename: Original filename
+            content_type: MIME type of the file
+            expires_in: URL expiration time in seconds (default: 1 hour)
+            
+        Returns:
+            dict with 'upload_url', 'key', and 'public_url'
+        """
+        try:
+            # Generate unique filename
+            file_extension = Path(filename).suffix.lower()
+            unique_filename = f"{uuid.uuid4()}{file_extension}"
+            key = f"posts/{unique_filename}"
+            
+            logger.info(f"Generating pre-signed URL for upload: {key}")
+            
+            # Generate pre-signed URL for PUT operation
+            presigned_url = self.s3_client.generate_presigned_url(
+                'put_object',
+                Params={
+                    'Bucket': self.bucket_name,
+                    'Key': key,
+                    'ContentType': content_type,
+                },
+                ExpiresIn=expires_in,
+                HttpMethod='PUT'
+            )
+            
+            # Generate the public URL (what the image URL will be after upload)
+            if self.cloudfront_domain:
+                public_url = f"https://{self.cloudfront_domain}/{key}"
+            else:
+                public_url = f"https://{self.bucket_name}.s3.{self.region}.amazonaws.com/{key}"
+            
+            logger.info(f"Generated pre-signed URL for: {key}")
+            
+            return {
+                'upload_url': presigned_url,
+                'key': key,
+                'public_url': public_url
+            }
+            
+        except ClientError as e:
+            logger.error(f"Failed to generate pre-signed URL: {str(e)}")
+            raise Exception(f"Failed to generate upload URL: {str(e)}")
+        except Exception as e:
+            logger.error(f"Unexpected error generating pre-signed URL: {str(e)}")
+            raise Exception(f"Failed to generate upload URL: {str(e)}")
 
 # Create a singleton instance
 s3_handler = S3Handler()

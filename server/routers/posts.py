@@ -9,8 +9,23 @@ from utils.s3 import s3_handler
 from logger import logger
 from pathlib import Path
 from typing import List
+from pydantic import BaseModel
 
 router = APIRouter()
+
+# Pydantic models for presigned URL workflow
+class PresignedUrlRequest(BaseModel):
+    filename: str
+    content_type: str
+
+class PresignedUrlResponse(BaseModel):
+    upload_url: str
+    key: str
+    public_url: str
+
+class ConfirmUploadRequest(BaseModel):
+    image_url: str
+    caption: str = ""
 
 # Allowed file extensions
 ALLOWED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".gif", ".webp"}
@@ -26,6 +41,85 @@ def is_allowed_file(filename: str, content_type: str) -> bool:
     has_valid_extension = Path(filename).suffix.lower() in ALLOWED_EXTENSIONS
     has_valid_mime = content_type in ALLOWED_MIME_TYPES
     return has_valid_extension and has_valid_mime
+
+@router.post("/presigned-url", response_model=PresignedUrlResponse)
+async def get_presigned_upload_url(
+    request: PresignedUrlRequest,
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Generate a pre-signed URL for direct S3 upload from the browser.
+    This bypasses API Gateway's 10MB limit for large files.
+    """
+    logger.info(f"Presigned URL request by user: {current_user.username} for file: {request.filename}")
+    
+    # Validate file type
+    if not is_allowed_file(request.filename, request.content_type):
+        logger.warning(f"Invalid file type: {request.filename} ({request.content_type})")
+        raise HTTPException(
+            status_code=400,
+            detail=f"File type not allowed. Allowed types: {', '.join(ALLOWED_EXTENSIONS)}"
+        )
+    
+    try:
+        # Generate pre-signed URL
+        presigned_data = s3_handler.generate_presigned_upload_url(
+            filename=request.filename,
+            content_type=request.content_type
+        )
+        
+        logger.info(f"Generated presigned URL for {current_user.username}: {presigned_data['key']}")
+        
+        return PresignedUrlResponse(**presigned_data)
+        
+    except Exception as e:
+        logger.error(f"Failed to generate presigned URL: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to generate upload URL: {str(e)}")
+
+@router.post("/confirm-upload", response_model=PostResponse)
+async def confirm_upload(
+    request: ConfirmUploadRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Confirm that the file was uploaded to S3 and create the post record.
+    This is called after the frontend successfully uploads directly to S3.
+    """
+    logger.info(f"Upload confirmation by user: {current_user.username} for: {request.image_url}")
+    
+    try:
+        # Create post record
+        db_post = Post(
+            user_id=current_user.id,
+            image_url=request.image_url,
+            caption=request.caption if request.caption else None
+        )
+        
+        db.add(db_post)
+        db.commit()
+        db.refresh(db_post)
+        
+        logger.info(f"Post created successfully: ID={db_post.id} by {current_user.username}")
+        
+        # Prepare response with user info
+        response = PostResponse(
+            id=db_post.id,
+            user_id=db_post.user_id,
+            image_url=db_post.image_url,
+            caption=db_post.caption,
+            created_at=db_post.created_at,
+            updated_at=db_post.updated_at,
+            username=current_user.username,
+            user_full_name=current_user.full_name
+        )
+        
+        return response
+        
+    except Exception as e:
+        logger.error(f"Failed to create post: {str(e)}")
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Failed to create post: {str(e)}")
 
 @router.post("/upload", response_model=PostResponse)
 async def upload_post(

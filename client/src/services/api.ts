@@ -129,6 +129,63 @@ export const authAPI = {
 
 // Posts API
 export const postsAPI = {
+  // Get presigned URL for direct S3 upload (for large files)
+  async getPresignedUrl(filename: string, contentType: string, token: string): Promise<{
+    upload_url: string;
+    key: string;
+    public_url: string;
+  }> {
+    const response = await fetch(`${API_BASE_URL}/posts/presigned-url`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify({ filename, content_type: contentType }),
+    });
+
+    if (!response.ok) {
+      const error: ApiError = await response.json();
+      throw new Error(error.detail || 'Failed to get upload URL');
+    }
+
+    return response.json();
+  },
+
+  // Upload file directly to S3 using presigned URL
+  async uploadToS3(presignedUrl: string, file: File): Promise<void> {
+    const response = await fetch(presignedUrl, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': file.type,
+      },
+      body: file,
+    });
+
+    if (!response.ok) {
+      throw new Error(`S3 upload failed: ${response.status} ${response.statusText}`);
+    }
+  },
+
+  // Confirm upload and create post record
+  async confirmUpload(imageUrl: string, caption: string, token: string): Promise<Post> {
+    const response = await fetch(`${API_BASE_URL}/posts/confirm-upload`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify({ image_url: imageUrl, caption }),
+    });
+
+    if (!response.ok) {
+      const error: ApiError = await response.json();
+      throw new Error(error.detail || 'Failed to confirm upload');
+    }
+
+    return response.json();
+  },
+
   // Get all posts (feed)
   async getAllPosts(): Promise<Post[]> {
     const response = await fetch(`${API_BASE_URL}/api/posts`);

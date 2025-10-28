@@ -27,7 +27,7 @@ const Upload = () => {
 
     // Validate file size (max 10MB)
     if (file.size > 10 * 1024 * 1024) {
-      setError("File size must be less than 10MB");
+      setError("File size must not exceed 10MB. Please choose a smaller image.");
       return;
     }
 
@@ -80,6 +80,12 @@ const Upload = () => {
       return;
     }
 
+    // Double-check file size before upload
+    if (selectedFile.size > 10 * 1024 * 1024) {
+      setError("File size must not exceed 10MB. Please choose a smaller image.");
+      return;
+    }
+
     setIsUploading(true);
     setError("");
 
@@ -102,7 +108,7 @@ const Upload = () => {
         throw new Error(error.detail || "Upload failed");
       }
 
-      // Success - redirect to feed or profile
+      // Success - redirect to feed
       navigate("/");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to upload image");
@@ -229,7 +235,7 @@ const Upload = () => {
                   />
                 </label>
                 <p className="mt-4 text-xs text-gray-500">
-                  PNG, JPG, GIF up to 10MB
+                  PNG, JPG, GIF, WEBP up to 10MB
                 </p>
               </div>
             ) : (
