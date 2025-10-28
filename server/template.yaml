@@ -33,7 +33,6 @@ Resources:
           ACCESS_TOKEN_EXPIRE_MINUTES: !Sub "{{resolve:ssm:/socialapp/ACCESS_TOKEN_EXPIRE_MINUTES}}"
           CORS_ORIGINS: !Sub "{{resolve:ssm:/socialapp/CORS_ORIGINS}}"
           S3_BUCKET_NAME: !Sub "{{resolve:ssm:/socialapp/S3_BUCKET_NAME}}"
-          AWS_REGION: us-east-1
       Policies:
         - Version: "2012-10-17"
           Statement:
