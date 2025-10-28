@@ -15,12 +15,27 @@ class S3Handler:
     def __init__(self):
         """Initialize S3 client with credentials from environment"""
         self.region = os.getenv('AWS_REGION', 'us-east-1')
-        self.s3_client = boto3.client(
-            's3',
-            aws_access_key_id=os.getenv('AWS_ACCESS_KEY_ID'),
-            aws_secret_access_key=os.getenv('AWS_SECRET_ACCESS_KEY'),
-            region_name=self.region
-        )
+        
+        # In Lambda, credentials come from IAM role automatically
+        # Only use explicit credentials if provided (for local development)
+        aws_access_key = os.getenv('AWS_ACCESS_KEY_ID')
+        aws_secret_key = os.getenv('AWS_SECRET_ACCESS_KEY')
+        
+        if aws_access_key and aws_secret_key:
+            # Local development with explicit credentials
+            self.s3_client = boto3.client(
+                's3',
+                aws_access_key_id=aws_access_key,
+                aws_secret_access_key=aws_secret_key,
+                region_name=self.region
+            )
+        else:
+            # Lambda - use IAM role credentials automatically
+            self.s3_client = boto3.client(
+                's3',
+                region_name=self.region
+            )
+        
         self.bucket_name = os.getenv('S3_BUCKET_NAME')
         self.cloudfront_domain = os.getenv('CLOUDFRONT_DOMAIN')  # Optional
         
