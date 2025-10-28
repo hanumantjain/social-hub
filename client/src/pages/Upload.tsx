@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import Navbar from "../components/Navbar";
-import { tokenManager } from "../services/api";
+import { tokenManager, postsAPI } from "../services/api";
 
 const Upload = () => {
   const navigate = useNavigate();
@@ -25,9 +25,9 @@ const Upload = () => {
       return;
     }
 
-    // Validate file size (max 8MB for API Gateway compatibility)
-    if (file.size > 8 * 1024 * 1024) {
-      setError("File size must not exceed 8MB. Please choose a smaller image.");
+    // Validate file size (50MB for direct S3 upload)
+    if (file.size > 50 * 1024 * 1024) {
+      setError("File size must not exceed 50MB. Please choose a smaller image.");
       return;
     }
 
@@ -81,8 +81,8 @@ const Upload = () => {
     }
 
     // Double-check file size before upload
-    if (selectedFile.size > 8 * 1024 * 1024) {
-      setError("File size must not exceed 8MB. Please choose a smaller image.");
+    if (selectedFile.size > 50 * 1024 * 1024) {
+      setError("File size must not exceed 50MB. Please choose a smaller image.");
       return;
     }
 
@@ -90,27 +90,29 @@ const Upload = () => {
     setError("");
 
     try {
-      const formData = new FormData();
-      formData.append("file", selectedFile);
-      formData.append("caption", caption);
+      // Step 1: Request presigned URL from backend
+      console.log("Requesting presigned URL...");
+      const presignedData = await postsAPI.getPresignedUrl(
+        selectedFile.name,
+        selectedFile.type,
+        token
+      );
+      console.log("Presigned URL received:", presignedData.key);
 
-      const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
-      const response = await fetch(`${API_BASE_URL}/posts/upload`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-        body: formData,
-      });
+      // Step 2: Upload file directly to S3
+      console.log("Uploading to S3...");
+      await postsAPI.uploadToS3(presignedData.upload_url, selectedFile);
+      console.log("Upload to S3 successful!");
 
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.detail || "Upload failed");
-      }
+      // Step 3: Confirm upload and create post record in database
+      console.log("Confirming upload...");
+      await postsAPI.confirmUpload(presignedData.public_url, caption, token);
+      console.log("Post created successfully!");
 
       // Success - redirect to feed
       navigate("/");
     } catch (err) {
+      console.error("Upload error:", err);
       setError(err instanceof Error ? err.message : "Failed to upload image");
     } finally {
       setIsUploading(false);
@@ -235,7 +237,7 @@ const Upload = () => {
                   />
                 </label>
                 <p className="mt-4 text-xs text-gray-500">
-                  PNG, JPG, GIF, WEBP up to 8MB
+                  PNG, JPG, GIF, WEBP up to 50MB
                 </p>
               </div>
             ) : (
