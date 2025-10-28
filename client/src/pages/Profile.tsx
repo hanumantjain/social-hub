@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import { authAPI, tokenManager } from "../services/api";
-import type { User } from "../services/api";
+import type { User, UpdateProfileRequest } from "../services/api";
 
 const Profile = () => {
   const navigate = useNavigate();
@@ -31,7 +31,7 @@ const Profile = () => {
         setUser(userData);
         setFullName(userData.full_name || "");
         setUsername(userData.username || "");
-        setBio("");
+        setBio(userData.bio || "");
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to load profile");
         // If token is invalid, redirect to login
@@ -52,9 +52,30 @@ const Profile = () => {
     setError("");
     
     try {
-      // Here you would typically call an API to update the profile
-      // For now, we'll just simulate a successful update
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      const token = tokenManager.getToken();
+      if (!token) {
+        navigate("/login");
+        return;
+      }
+
+      // Prepare update data - only send changed fields
+      const updateData: UpdateProfileRequest = {};
+      
+      if (fullName !== user?.full_name) {
+        updateData.full_name = fullName;
+      }
+      
+      if (username !== user?.username) {
+        updateData.username = username;
+      }
+      
+      if (bio !== user?.bio) {
+        updateData.bio = bio;
+      }
+
+      // Call API to update profile
+      const updatedUser = await authAPI.updateProfile(token, updateData);
+      setUser(updatedUser);
       
       setSaveSuccess(true);
       setTimeout(() => {
@@ -72,7 +93,7 @@ const Profile = () => {
     setShowEditModal(false);
     setFullName(user?.full_name || "");
     setUsername(user?.username || "");
-    setBio("");
+    setBio(user?.bio || "");
   };
 
   const handleChangePhoto = () => {
@@ -158,15 +179,16 @@ const Profile = () => {
                 <div className="text-sm font-semibold text-gray-900">
                   {user?.full_name || 'Full Name'}
                 </div>
-                <div className="text-sm text-gray-900">
-                  Welcome to my Instagram profile! 📸
-                </div>
-                <div className="text-sm text-gray-900">
-                  📍 New York, NY
-                </div>
-                <div className="text-sm text-gray-900">
-                  🌐 <a href="#" className="text-blue-600 hover:underline">www.example.com</a>
-                </div>
+                {user?.bio && (
+                  <div className="text-sm text-gray-900 whitespace-pre-wrap">
+                    {user.bio}
+                  </div>
+                )}
+                {!user?.bio && (
+                  <div className="text-sm text-gray-500 italic">
+                    No bio yet
+                  </div>
+                )}
               </div>
             </div>
           </div>

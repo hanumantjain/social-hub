@@ -1,10 +1,11 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import { authAPI, tokenManager } from "../services/api";
 
 const Login = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const [username, setUsername] = useState("");
@@ -18,7 +19,10 @@ const Login = () => {
     try {
       const response = await authAPI.login({ username, password });
       tokenManager.saveToken(response.access_token);
-      navigate("/"); // Redirect to feed after successful login
+      
+      // Get redirect parameter from URL, default to "/"
+      const redirectTo = searchParams.get("redirect") || "/";
+      navigate(redirectTo);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Login failed");
     } finally {
@@ -118,7 +122,7 @@ const Login = () => {
               <p className="text-center text-gray-600 text-sm">
                 Don't have an account?{" "}
                 <Link
-                  to="/signup"
+                  to={`/signup${searchParams.get("redirect") ? `?redirect=${searchParams.get("redirect")}` : ""}`}
                   className="text-gray-900 font-semibold hover:underline"
                 >
                   Sign up here

@@ -7,6 +7,7 @@ export interface User {
   full_name: string;
   username: string;
   email: string;
+  bio?: string;
   created_at: string;
   updated_at: string;
 }
@@ -21,6 +22,24 @@ export interface SignupRequest {
   username: string;
   email: string;
   password: string;
+  bio?: string;
+}
+
+export interface UpdateProfileRequest {
+  full_name?: string;
+  username?: string;
+  bio?: string;
+}
+
+export interface Post {
+  id: number;
+  user_id: number;
+  image_url: string;
+  caption?: string;
+  created_at: string;
+  updated_at: string;
+  username?: string;
+  user_full_name?: string;
 }
 
 export interface AuthResponse {
@@ -86,6 +105,67 @@ export const authAPI = {
     }
 
     return response.json();
+  },
+
+  // Update user profile
+  async updateProfile(token: string, profileData: UpdateProfileRequest): Promise<User> {
+    const response = await fetch(`${API_BASE_URL}/auth/me`, {
+      method: 'PATCH',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(profileData),
+    });
+
+    if (!response.ok) {
+      const error: ApiError = await response.json();
+      throw new Error(error.detail || 'Failed to update profile');
+    }
+
+    return response.json();
+  },
+};
+
+// Posts API
+export const postsAPI = {
+  // Get all posts (feed)
+  async getAllPosts(): Promise<Post[]> {
+    const response = await fetch(`${API_BASE_URL}/posts`);
+
+    if (!response.ok) {
+      const error: ApiError = await response.json();
+      throw new Error(error.detail || 'Failed to fetch posts');
+    }
+
+    return response.json();
+  },
+
+  // Get posts by user
+  async getUserPosts(userId: number): Promise<Post[]> {
+    const response = await fetch(`${API_BASE_URL}/posts/user/${userId}`);
+
+    if (!response.ok) {
+      const error: ApiError = await response.json();
+      throw new Error(error.detail || 'Failed to fetch user posts');
+    }
+
+    return response.json();
+  },
+
+  // Delete post
+  async deletePost(postId: number, token: string): Promise<void> {
+    const response = await fetch(`${API_BASE_URL}/posts/${postId}`, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      },
+    });
+
+    if (!response.ok) {
+      const error: ApiError = await response.json();
+      throw new Error(error.detail || 'Failed to delete post');
+    }
   },
 };
 

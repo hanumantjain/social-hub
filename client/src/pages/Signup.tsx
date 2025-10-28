@@ -1,10 +1,11 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import { authAPI, tokenManager } from "../services/api";
 
 const Signup = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const [name, setName] = useState("");
@@ -37,7 +38,9 @@ const Signup = () => {
       const loginResponse = await authAPI.login({ username, password });
       tokenManager.saveToken(loginResponse.access_token);
       
-      navigate("/"); // Redirect to homepage after successful signup and login
+      // Get redirect parameter from URL, default to "/"
+      const redirectTo = searchParams.get("redirect") || "/";
+      navigate(redirectTo);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Signup failed");
     } finally {
@@ -179,7 +182,7 @@ const Signup = () => {
               <p className="text-center text-gray-600 text-sm">
                 Already have an account?{" "}
                 <Link
-                  to="/login"
+                  to={`/login${searchParams.get("redirect") ? `?redirect=${searchParams.get("redirect")}` : ""}`}
                   className="text-gray-900 font-semibold hover:underline"
                 >
                   Sign in here

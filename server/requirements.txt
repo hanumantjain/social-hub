@@ -8,3 +8,5 @@ python-dotenv
 psycopg2-binary
 mangum
 email-validator
+boto3
+python-magic

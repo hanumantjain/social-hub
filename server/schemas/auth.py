@@ -7,6 +7,7 @@ class UserBase(BaseModel):
     full_name: str
     username: str
     email: EmailStr
+    bio: Optional[str] = None
 
 # User Creation Schema
 class UserCreate(UserBase):
@@ -41,3 +42,4 @@ class UserUpdate(BaseModel):
     username: Optional[str] = None
     email: Optional[EmailStr] = None
     password: Optional[str] = None
+    bio: Optional[str] = None

@@ -1,0 +1,147 @@
+"""
+AWS S3 utilities for file upload and management
+"""
+import boto3
+from botocore.exceptions import ClientError
+from logger import logger
+import os
+from typing import Optional
+import uuid
+from pathlib import Path
+
+class S3Handler:
+    """Handle S3 file operations"""
+    
+    def __init__(self):
+        """Initialize S3 client with credentials from environment"""
+        self.s3_client = boto3.client(
+            's3',
+            aws_access_key_id=os.getenv('AWS_ACCESS_KEY_ID'),
+            aws_secret_access_key=os.getenv('AWS_SECRET_ACCESS_KEY'),
+            region_name=os.getenv('AWS_REGION', 'us-east-1')
+        )
+        self.bucket_name = os.getenv('S3_BUCKET_NAME')
+        self.cloudfront_domain = os.getenv('CLOUDFRONT_DOMAIN')  # Optional
+        
+        if not self.bucket_name:
+            logger.error("S3_BUCKET_NAME environment variable not set")
+            raise ValueError("S3_BUCKET_NAME must be set in environment variables")
+    
+    def upload_file(
+        self, 
+        file_obj, 
+        filename: str, 
+        content_type: str = 'image/jpeg'
+    ) -> Optional[str]:
+        """
+        Upload file to S3 and return the URL
+        
+        Args:
+            file_obj: File object to upload
+            filename: Original filename (extension will be preserved)
+            content_type: MIME type of the file
+            
+        Returns:
+            Public URL of uploaded file, or None if upload failed
+        """
+        try:
+            # Generate unique filename
+            file_extension = Path(filename).suffix.lower()
+            unique_filename = f"posts/{uuid.uuid4()}{file_extension}"
+            
+            # Upload to S3
+            self.s3_client.upload_fileobj(
+                file_obj,
+                self.bucket_name,
+                unique_filename,
+                ExtraArgs={
+                    'ContentType': content_type,
+                    'CacheControl': 'max-age=31536000',  # Cache for 1 year
+                }
+            )
+            
+            # Generate URL
+            if self.cloudfront_domain:
+                # Use CloudFront URL if available (better performance)
+                url = f"https://{self.cloudfront_domain}/{unique_filename}"
+            else:
+                # Use direct S3 URL
+                url = f"https://{self.bucket_name}.s3.amazonaws.com/{unique_filename}"
+            
+            logger.info(f"File uploaded to S3: {unique_filename}")
+            return url
+            
+        except ClientError as e:
+            logger.error(f"Failed to upload to S3: {str(e)}")
+            return None
+        except Exception as e:
+            logger.error(f"Unexpected error during S3 upload: {str(e)}")
+            return None
+    
+    def delete_file(self, file_url: str) -> bool:
+        """
+        Delete file from S3
+        
+        Args:
+            file_url: Full URL of the file to delete
+            
+        Returns:
+            True if deleted successfully, False otherwise
+        """
+        try:
+            # Extract key from URL
+            if self.cloudfront_domain and self.cloudfront_domain in file_url:
+                # CloudFront URL
+                key = file_url.split(self.cloudfront_domain + '/')[-1]
+            else:
+                # S3 URL
+                key = file_url.split('.amazonaws.com/')[-1]
+            
+            self.s3_client.delete_object(
+                Bucket=self.bucket_name,
+                Key=key
+            )
+            
+            logger.info(f"File deleted from S3: {key}")
+            return True
+            
+        except ClientError as e:
+            logger.error(f"Failed to delete from S3: {str(e)}")
+            return False
+        except Exception as e:
+            logger.error(f"Unexpected error during S3 deletion: {str(e)}")
+            return False
+    
+    def get_presigned_url(self, file_url: str, expiration: int = 3600) -> Optional[str]:
+        """
+        Generate a presigned URL for private files
+        
+        Args:
+            file_url: Full URL of the file
+            expiration: URL expiration time in seconds (default 1 hour)
+            
+        Returns:
+            Presigned URL or None if failed
+        """
+        try:
+            # Extract key from URL
+            key = file_url.split('.amazonaws.com/')[-1]
+            
+            url = self.s3_client.generate_presigned_url(
+                'get_object',
+                Params={
+                    'Bucket': self.bucket_name,
+                    'Key': key
+                },
+                ExpiresIn=expiration
+            )
+            
+            return url
+            
+        except ClientError as e:
+            logger.error(f"Failed to generate presigned URL: {str(e)}")
+            return None
+
+# Create a singleton instance
+s3_handler = S3Handler()
+
