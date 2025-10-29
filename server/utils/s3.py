@@ -85,10 +85,10 @@ class S3Handler:
                 # Use CloudFront URL if available (better performance)
                 url = f"https://{self.cloudfront_domain}/{unique_filename}"
             else:
-                # Use direct S3 URL
-                url = f"https://{self.bucket_name}.s3.amazonaws.com/{unique_filename}"
+                # Use direct S3 URL with region
+                url = f"https://{self.bucket_name}.s3.{self.region}.amazonaws.com/{unique_filename}"
             
-            logger.info(f"File uploaded to S3: {unique_filename}")
+            logger.info(f"File uploaded to S3: {unique_filename} -> {url}")
             return url
             
         except ClientError as e:
