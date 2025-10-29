@@ -69,13 +69,14 @@ class S3Handler:
             file_extension = Path(filename).suffix.lower()
             unique_filename = f"posts/{uuid.uuid4()}{file_extension}"
             
-            # Upload to S3
+            # Upload to S3 with public-read ACL
             self.s3_client.upload_fileobj(
                 file_obj,
                 self.bucket_name,
                 unique_filename,
                 ExtraArgs={
                     'ContentType': content_type,
+                    'ACL': 'public-read',  # Make uploaded files publicly readable
                     'CacheControl': 'max-age=31536000',  # Cache for 1 year
                 }
             )
