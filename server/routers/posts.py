@@ -228,9 +228,10 @@ async def get_all_posts(
     return response
 
 @router.get("/debug/test-s3-write")
-async def test_s3_write(current_user: User = Depends(get_current_user)):
-    """Debug endpoint to test direct S3 write from Lambda"""
+async def test_s3_write():
+    """Debug endpoint to test direct S3 write from Lambda (no auth required)"""
     import io
+    import traceback
     try:
         # Try to write a test file
         test_content = io.BytesIO(b"test content from lambda")
@@ -241,14 +242,42 @@ async def test_s3_write(current_user: User = Depends(get_current_user)):
         )
         return {
             "success": True,
-            "message": "Lambda can write to S3",
-            "test_url": test_url
+            "message": "Lambda CAN write to S3!",
+            "test_url": test_url,
+            "bucket": s3_handler.bucket_name
         }
     except Exception as e:
         return {
             "success": False,
             "error": str(e),
-            "message": "Lambda CANNOT write to S3"
+            "traceback": traceback.format_exc(),
+            "message": "Lambda CANNOT write to S3",
+            "bucket": s3_handler.bucket_name
+        }
+
+@router.get("/debug/test-presigned-url")
+async def test_presigned_url():
+    """Debug endpoint to test presigned URL generation (no auth required)"""
+    import traceback
+    try:
+        presigned_data = s3_handler.generate_presigned_upload_url(
+            filename="debug-test.png",
+            content_type="image/png"
+        )
+        return {
+            "success": True,
+            "message": "Presigned URL generated successfully",
+            "presigned_url": presigned_data['upload_url'],
+            "key": presigned_data['key'],
+            "bucket": s3_handler.bucket_name
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "error": str(e),
+            "traceback": traceback.format_exc(),
+            "message": "Failed to generate presigned URL",
+            "bucket": s3_handler.bucket_name
         }
 
 @router.delete("/{post_id}")
