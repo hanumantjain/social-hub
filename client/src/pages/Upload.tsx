@@ -108,7 +108,13 @@ const Upload = () => {
       );
 
       if (!response.ok) {
-        const error = await response.json();
+        let error;
+        try {
+          error = await response.json();
+        } catch {
+          error = { detail: `HTTP ${response.status}: ${response.statusText}` };
+        }
+        console.error("Upload failed:", error);
         throw new Error(error.detail || "Upload failed");
       }
 
