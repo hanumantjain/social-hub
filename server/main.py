@@ -3,7 +3,6 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 from database import get_db, engine, Base
-from models.post import Post
 from routers.auth import router as auth_router
 from routers.posts import router as posts_router
 from models import *
@@ -43,33 +42,6 @@ def run_migrations():
         except Exception as e:
             logger.error(f"❌ Migration failed: {e}")
             connection.rollback()
-
-@app.get("/debug/clear-posts")
-async def clear_posts(db: Session = Depends(get_db)):
-    """Debug endpoint to clear all posts (no auth required for testing)"""
-    try:
-        db.execute(text("DELETE FROM posts"))
-        db.commit()
-        logger.info("All posts deleted")
-        return {"success": True, "message": "All posts cleared"}
-    except Exception as e:
-        logger.error(f"Failed to clear posts: {e}")
-        db.rollback()
-        return {"success": False, "error": str(e)}
-
-@app.get("/debug/clear-all")
-async def clear_all(db: Session = Depends(get_db)):
-    """Debug endpoint to clear all posts AND users (no auth required for testing)"""
-    try:
-        db.execute(text("DELETE FROM posts"))
-        db.execute(text("DELETE FROM users"))
-        db.commit()
-        logger.info("All posts and users deleted")
-        return {"success": True, "message": "All posts and users cleared"}
-    except Exception as e:
-        logger.error(f"Failed to clear data: {e}")
-        db.rollback()
-        return {"success": False, "error": str(e)}
 
 @app.on_event("startup")
 async def startup_event():

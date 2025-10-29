@@ -234,59 +234,6 @@ async def get_all_posts(
     logger.info(f"Returned {len(response)} posts")
     return response
 
-@router.get("/debug/test-s3-write")
-async def test_s3_write():
-    """Debug endpoint to test direct S3 write from Lambda (no auth required)"""
-    import io
-    import traceback
-    try:
-        # Try to write a test file
-        test_content = io.BytesIO(b"test content from lambda")
-        test_url = s3_handler.upload_file(
-            test_content,
-            "test-lambda-write.txt",
-            "text/plain"
-        )
-        return {
-            "success": True,
-            "message": "Lambda CAN write to S3!",
-            "test_url": test_url,
-            "bucket": s3_handler.bucket_name
-        }
-    except Exception as e:
-        return {
-            "success": False,
-            "error": str(e),
-            "traceback": traceback.format_exc(),
-            "message": "Lambda CANNOT write to S3",
-            "bucket": s3_handler.bucket_name
-        }
-
-@router.get("/debug/test-presigned-url")
-async def test_presigned_url():
-    """Debug endpoint to test presigned URL generation (no auth required)"""
-    import traceback
-    try:
-        presigned_data = s3_handler.generate_presigned_upload_url(
-            filename="debug-test.png",
-            content_type="image/png"
-        )
-        return {
-            "success": True,
-            "message": "Presigned URL generated successfully",
-            "presigned_url": presigned_data['upload_url'],
-            "key": presigned_data['key'],
-            "bucket": s3_handler.bucket_name
-        }
-    except Exception as e:
-        return {
-            "success": False,
-            "error": str(e),
-            "traceback": traceback.format_exc(),
-            "message": "Failed to generate presigned URL",
-            "bucket": s3_handler.bucket_name
-        }
-
 @router.delete("/{post_id}")
 async def delete_post(
     post_id: int,
