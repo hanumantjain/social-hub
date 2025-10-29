@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import Navbar from "../components/Navbar";
-import { tokenManager, postsAPI } from "../services/api";
+import { tokenManager } from "../services/api";
 
 const Upload = () => {
   const navigate = useNavigate();
