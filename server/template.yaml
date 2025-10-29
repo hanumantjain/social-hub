@@ -43,8 +43,10 @@ Resources:
                 - s3:DeleteObject
                 - s3:ListBucket
               Resource:
-                - !Sub "arn:aws:s3:::${S3_BUCKET_NAME}"
-                - !Sub "arn:aws:s3:::${S3_BUCKET_NAME}/*"
+                - "arn:aws:s3:::social-posts-local"
+                - "arn:aws:s3:::social-posts-local/*"
+                - "arn:aws:s3:::social-posts-prod"
+                - "arn:aws:s3:::social-posts-prod/*"
       Events:
         ApiGatewayEvent:
           Type: Api
