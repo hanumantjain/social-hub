@@ -143,14 +143,14 @@ async def upload_post(
             detail=f"File type not allowed. Allowed types: {', '.join(ALLOWED_EXTENSIONS)}"
         )
     
-    # Check file size (max 8MB for API Gateway compatibility)
+    # Check file size (max 5MB for API Gateway compatibility)
     file.file.seek(0, 2)  # Seek to end
     file_size = file.file.tell()
     file.file.seek(0)  # Reset to beginning
     
-    if file_size > 8 * 1024 * 1024:  # 8MB
+    if file_size > 5 * 1024 * 1024:  # 5MB
         logger.warning(f"Upload failed: File too large ({file_size} bytes) by {current_user.username}")
-        raise HTTPException(status_code=400, detail="File size must be less than 8MB")
+        raise HTTPException(status_code=400, detail="File size must be less than 5MB")
     
     try:
         # Upload to S3
