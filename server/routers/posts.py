@@ -131,6 +131,10 @@ async def upload_post(
     """Upload a new post with image to S3"""
     logger.info(f"Upload attempt by user: {current_user.username}")
     
+    # Debug: Check S3 configuration
+    logger.info(f"S3 bucket: {s3_handler.bucket_name}")
+    logger.info(f"S3 region: {s3_handler.region}")
+    
     # Validate file
     if not file.filename:
         logger.warning(f"Upload failed: No file provided by {current_user.username}")
@@ -154,6 +158,7 @@ async def upload_post(
     
     try:
         # Upload to S3
+        logger.info(f"Attempting to upload to S3 bucket: {s3_handler.bucket_name}")
         image_url = s3_handler.upload_file(
             file.file,
             file.filename,
@@ -161,10 +166,10 @@ async def upload_post(
         )
         
         if not image_url:
-            logger.error(f"S3 upload failed for {current_user.username}")
+            logger.error(f"S3 upload returned None for {current_user.username}")
             raise HTTPException(status_code=500, detail="Failed to upload image to S3")
         
-        logger.info(f"File uploaded to S3: {image_url}")
+        logger.info(f"File uploaded to S3 successfully: {image_url}")
         
         # Create post record
         db_post = Post(
@@ -195,8 +200,10 @@ async def upload_post(
     except HTTPException:
         raise
     except Exception as e:
+        import traceback
         logger.error(f"Upload failed for {current_user.username}: {str(e)}")
-        raise HTTPException(status_code=500, detail="Failed to upload image")
+        logger.error(f"Traceback: {traceback.format_exc()}")
+        raise HTTPException(status_code=500, detail=f"Upload failed: {str(e)}")
 
 @router.get("/", response_model=List[PostResponse])
 async def get_all_posts(
