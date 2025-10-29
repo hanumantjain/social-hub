@@ -158,6 +158,7 @@ export const postsAPI = {
       method: 'PUT',
       headers: {
         'Content-Type': file.type,
+        'x-amz-acl': 'public-read',  // Must match the ACL in presigned URL
       },
       body: file,
     });

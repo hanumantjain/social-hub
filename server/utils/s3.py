@@ -179,12 +179,14 @@ class S3Handler:
             logger.info(f"Generating pre-signed URL for upload: {key}")
             
             # Generate pre-signed URL for PUT operation
+            # Include ACL for public-read access
             presigned_url = self.s3_client.generate_presigned_url(
                 'put_object',
                 Params={
                     'Bucket': self.bucket_name,
                     'Key': key,
                     'ContentType': content_type,
+                    'ACL': 'public-read'  # Make uploaded files publicly readable
                 },
                 ExpiresIn=expires_in,
                 HttpMethod='PUT'
