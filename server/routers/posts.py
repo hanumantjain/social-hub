@@ -227,6 +227,30 @@ async def get_all_posts(
     logger.info(f"Returned {len(response)} posts")
     return response
 
+@router.get("/debug/test-s3-write")
+async def test_s3_write(current_user: User = Depends(get_current_user)):
+    """Debug endpoint to test direct S3 write from Lambda"""
+    import io
+    try:
+        # Try to write a test file
+        test_content = io.BytesIO(b"test content from lambda")
+        test_url = s3_handler.upload_file(
+            test_content,
+            "test-lambda-write.txt",
+            "text/plain"
+        )
+        return {
+            "success": True,
+            "message": "Lambda can write to S3",
+            "test_url": test_url
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "error": str(e),
+            "message": "Lambda CANNOT write to S3"
+        }
+
 @router.delete("/{post_id}")
 async def delete_post(
     post_id: int,
