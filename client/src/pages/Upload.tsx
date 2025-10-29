@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import Navbar from "../components/Navbar";
-import { tokenManager } from "../services/api";
+import { tokenManager, postsAPI } from "../services/api";
 
 const Upload = () => {
   const navigate = useNavigate();
@@ -25,9 +25,9 @@ const Upload = () => {
       return;
     }
 
-    // Validate file size (5MB for backend upload via API Gateway)
-    if (file.size > 5 * 1024 * 1024) {
-      setError("File size must not exceed 5MB. Please choose a smaller image.");
+    // Validate file size (50MB for direct S3 upload)
+    if (file.size > 50 * 1024 * 1024) {
+      setError("File size must not exceed 50MB. Please choose a smaller image.");
       return;
     }
 
@@ -80,9 +80,9 @@ const Upload = () => {
       return;
     }
 
-    // Double-check file size before upload (5MB for API Gateway)
-    if (selectedFile.size > 5 * 1024 * 1024) {
-      setError("File size must not exceed 5MB. Please choose a smaller image.");
+    // Double-check file size before upload (50MB for direct S3 upload)
+    if (selectedFile.size > 50 * 1024 * 1024) {
+      setError("File size must not exceed 50MB. Please choose a smaller image.");
       return;
     }
 
@@ -90,35 +90,70 @@ const Upload = () => {
     setError("");
 
     try {
-      // Upload via backend (API Gateway -> Lambda -> S3)
-      console.log("Uploading via backend...");
-      const formData = new FormData();
-      formData.append("file", selectedFile);
-      formData.append("caption", caption);
-
+      // Step 1: Get presigned URL from backend
+      console.log("Requesting presigned URL...");
       const response = await fetch(
-        `${import.meta.env.VITE_API_URL || "http://localhost:8000"}/posts/upload`,
+        `${import.meta.env.VITE_API_URL || "http://localhost:8000"}/posts/presigned-url`,
         {
           method: "POST",
           headers: {
+            "Content-Type": "application/json",
             Authorization: `Bearer ${token}`,
           },
-          body: formData,
+          body: JSON.stringify({
+            filename: selectedFile.name,
+            content_type: selectedFile.type,
+          }),
         }
       );
 
       if (!response.ok) {
-        let error;
-        try {
-          error = await response.json();
-        } catch {
-          error = { detail: `HTTP ${response.status}: ${response.statusText}` };
-        }
-        console.error("Upload failed:", error);
-        throw new Error(error.detail || "Upload failed");
+        const error = await response.json();
+        throw new Error(error.detail || "Failed to get upload URL");
       }
 
-      console.log("Upload successful!");
+      const presignedData = await response.json();
+      console.log("Presigned URL received:", presignedData.key);
+
+      // Step 2: Upload directly to S3
+      console.log("Uploading to S3...");
+      const uploadResponse = await fetch(presignedData.upload_url, {
+        method: "PUT",
+        headers: {
+          "Content-Type": selectedFile.type,
+        },
+        body: selectedFile,
+      });
+
+      if (!uploadResponse.ok) {
+        throw new Error(`S3 upload failed: ${uploadResponse.status} ${uploadResponse.statusText}`);
+      }
+
+      console.log("Upload to S3 successful!");
+
+      // Step 3: Confirm upload with backend
+      console.log("Confirming upload...");
+      const confirmResponse = await fetch(
+        `${import.meta.env.VITE_API_URL || "http://localhost:8000"}/posts/confirm-upload`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            image_url: presignedData.public_url,
+            caption: caption,
+          }),
+        }
+      );
+
+      if (!confirmResponse.ok) {
+        const error = await confirmResponse.json();
+        throw new Error(error.detail || "Failed to confirm upload");
+      }
+
+      console.log("Upload confirmed!");
       
       // Success - redirect to feed
       navigate("/");
