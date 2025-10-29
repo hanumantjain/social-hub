@@ -76,7 +76,8 @@ pipeline {
                                 --s3-bucket ${SAM_ARTIFACTS_BUCKET} \
                                 --no-confirm-changeset \
                                 --capabilities CAPABILITY_IAM \
-                                --region ${AWS_DEFAULT_REGION}
+                                --region ${AWS_DEFAULT_REGION} \
+                                --no-fail-on-empty-changeset
                         '''
                     }
                 }

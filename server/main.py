@@ -145,3 +145,4 @@ def health_check(db: Session = Depends(get_db)):
 
 # Lambda handler with CORS support
 handler = Mangum(app, lifespan="off")
+#
