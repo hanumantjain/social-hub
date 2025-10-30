@@ -170,22 +170,6 @@ const Profile = () => {
                  </button>
               </div>
               
-              {/* Stats */}
-              <div className="flex space-x-8 mb-4">
-                <div className="text-center">
-                  <div className="text-lg font-semibold text-gray-900">{posts.length}</div>
-                  <div className="text-sm text-gray-600">posts</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-lg font-semibold text-gray-900">0</div>
-                  <div className="text-sm text-gray-600">followers</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-lg font-semibold text-gray-900">0</div>
-                  <div className="text-sm text-gray-600">following</div>
-                </div>
-              </div>
-              
               {/* Bio */}
               <div className="space-y-1">
                 <div className="text-sm font-semibold text-gray-900">
