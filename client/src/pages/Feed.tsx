@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import Navbar from "../components/Navbar";
+import { Link } from "react-router-dom";
 import { postsAPI } from "../services/api";
 import type { Post } from "../services/api";
 
@@ -22,6 +23,55 @@ const Feed = () => {
 
     fetchPosts();
   }, []);
+
+  const handleDownload = async (imageUrl: string, postId: number) => {
+    try {
+      const response = await fetch(imageUrl, {
+        mode: 'cors',
+        cache: 'no-cache',
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Failed to fetch image: ${response.statusText}`);
+      }
+
+      const blob = await response.blob();
+      
+      // Determine file extension from blob type or URL
+      let extension = 'jpg';
+      if (blob.type) {
+        const mimeType = blob.type;
+        if (mimeType.includes('png')) extension = 'png';
+        else if (mimeType.includes('gif')) extension = 'gif';
+        else if (mimeType.includes('webp')) extension = 'webp';
+        else if (mimeType.includes('jpeg')) extension = 'jpg';
+      } else {
+        // Fallback: try to extract from URL
+        const urlMatch = imageUrl.match(/\.(jpg|jpeg|png|gif|webp)/i);
+        if (urlMatch) {
+          extension = urlMatch[1].toLowerCase();
+          if (extension === 'jpeg') extension = 'jpg';
+        }
+      }
+
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `post-${postId}.${extension}`;
+      link.style.display = 'none';
+      document.body.appendChild(link);
+      link.click();
+      
+      // Clean up after a short delay
+      setTimeout(() => {
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+      }, 100);
+    } catch (err) {
+      console.error("Failed to download image:", err);
+      alert("Failed to download image. Please try again.");
+    }
+  };
 
   if (isLoading) {
     return (
@@ -54,7 +104,7 @@ const Feed = () => {
         <div className="columns-1 sm:columns-2 lg:columns-3 xl:columns-4 gap-4">
           {posts.map((post) => (
             <div key={post.id} className="break-inside-avoid mb-4 group cursor-pointer">
-              <div className="relative bg-white rounded-lg overflow-hidden shadow-sm hover:shadow-lg transition-shadow">
+              <Link to={`/post/${post.id}`} state={{ post }} className="relative block bg-white rounded-lg overflow-hidden shadow-sm hover:shadow-lg transition-shadow">
                 {/* Image */}
                 <div className="relative">
                   <img
@@ -66,14 +116,34 @@ const Feed = () => {
                       target.src = "https://via.placeholder.com/600x400?text=Image+Not+Found";
                     }}
                   />
-                  {/* Caption overlay on hover */}
-                  {post.caption && (
-                    <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-4">
-                      <p className="text-white text-sm line-clamp-3">{post.caption}</p>
-                    </div>
-                  )}
+                  {/* Download icon button */}
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      e.preventDefault();
+                      handleDownload(post.image_url, post.id);
+                    }}
+                    className="absolute top-2 right-2 p-2 bg-black/50 hover:bg-black/70 rounded-full transition-all opacity-0 group-hover:opacity-100 z-10"
+                    aria-label="Download image"
+                    type="button"
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="h-5 w-5 text-white"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                      strokeWidth={2}
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
+                      />
+                    </svg>
+                  </button>
                 </div>
-              </div>
+              </Link>
             </div>
           ))}
         </div>

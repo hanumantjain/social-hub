@@ -7,7 +7,9 @@ const Upload = () => {
   const navigate = useNavigate();
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
-  const [caption, setCaption] = useState("");
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [tags, setTags] = useState("");
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState("");
   const [dragActive, setDragActive] = useState(false);
@@ -71,6 +73,16 @@ const Upload = () => {
   const handleUpload = async () => {
     if (!selectedFile) {
       setError("Please select an image");
+      return;
+    }
+
+    if (!title.trim()) {
+      setError("Title is required");
+      return;
+    }
+
+    if (!description.trim()) {
+      setError("Description is required");
       return;
     }
 
@@ -143,7 +155,9 @@ const Upload = () => {
           },
           body: JSON.stringify({
             image_url: presignedData.public_url,
-            caption: caption,
+            title: title.trim(),
+            caption: description.trim(),
+            tags: tags.split(',').map(tag => tag.trim()).filter(tag => tag.length > 0),
           }),
         }
       );
@@ -168,7 +182,9 @@ const Upload = () => {
   const handleCancel = () => {
     setSelectedFile(null);
     setPreview(null);
-    setCaption("");
+    setTitle("");
+    setDescription("");
+    setTags("");
     setError("");
   };
 
@@ -204,55 +220,54 @@ const Upload = () => {
               </div>
             )}
 
-            {!preview ? (
-              /* Upload Area */
-              <div
-                className={`border-2 border-dashed rounded-lg p-12 text-center transition-colors ${
-                  dragActive
-                    ? "border-black bg-gray-50"
-                    : "border-gray-300 hover:border-gray-400"
-                }`}
-                onDragEnter={handleDrag}
-                onDragLeave={handleDrag}
-                onDragOver={handleDrag}
-                onDrop={handleDrop}
-              >
-                <svg
-                  className="mx-auto h-16 w-16 text-gray-400"
-                  stroke="currentColor"
-                  fill="none"
-                  viewBox="0 0 48 48"
+            <div className="space-y-6">
+              {/* Upload Area */}
+              {!preview ? (
+                <div
+                  className={`border-2 border-dashed rounded-lg p-12 text-center transition-colors ${
+                    dragActive
+                      ? "border-black bg-gray-50"
+                      : "border-gray-300 hover:border-gray-400"
+                  }`}
+                  onDragEnter={handleDrag}
+                  onDragLeave={handleDrag}
+                  onDragOver={handleDrag}
+                  onDrop={handleDrop}
                 >
-                  <path
-                    d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02"
-                    strokeWidth={2}
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg>
-                <p className="mt-4 text-lg text-gray-600">
-                  Drag and drop your image here
-                </p>
-                <p className="mt-2 text-sm text-gray-500">or</p>
-                <label className="mt-4 inline-block">
-                  <span className="px-6 py-3 bg-black text-white font-medium rounded-lg hover:bg-gray-900 cursor-pointer transition-colors">
-                    Select from computer
-                  </span>
-                  <input
-                    type="file"
-                    className="hidden"
-                    accept="image/*"
-                    onChange={handleFileInput}
-                  />
-                </label>
-                <p className="mt-4 text-xs text-gray-500">
-                  PNG, JPG, GIF, WEBP up to 50MB
-                </p>
-              </div>
-            ) : (
-              /* Preview and Caption */
-              <div className="space-y-6">
-                {/* Image Preview */}
+                  <svg
+                    className="mx-auto h-16 w-16 text-gray-400"
+                    stroke="currentColor"
+                    fill="none"
+                    viewBox="0 0 48 48"
+                  >
+                    <path
+                      d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02"
+                      strokeWidth={2}
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                  <p className="mt-4 text-lg text-gray-600">
+                    Drag and drop your image here
+                  </p>
+                  <p className="mt-2 text-sm text-gray-500">or</p>
+                  <label className="mt-4 inline-block">
+                    <span className="px-6 py-3 bg-black text-white font-medium rounded-lg hover:bg-gray-900 cursor-pointer transition-colors">
+                      Select from computer
+                    </span>
+                    <input
+                      type="file"
+                      className="hidden"
+                      accept="image/*"
+                      onChange={handleFileInput}
+                    />
+                  </label>
+                  <p className="mt-4 text-xs text-gray-500">
+                    PNG, JPG, GIF, WEBP up to 50MB
+                  </p>
+                </div>
+              ) : (
+                /* Image Preview */
                 <div className="relative">
                   <img
                     src={preview}
@@ -278,25 +293,60 @@ const Upload = () => {
                     </svg>
                   </button>
                 </div>
+              )}
 
-                {/* Caption Input */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Caption
-                  </label>
-                  <textarea
-                    value={caption}
-                    onChange={(e) => setCaption(e.target.value)}
-                    rows={4}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
-                    placeholder="Write a caption..."
-                  />
-                  <p className="mt-2 text-sm text-gray-500">
-                    {caption.length}/2200 characters
-                  </p>
-                </div>
+              {/* Title Input */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Title <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="Enter a title..."
+                  required
+                />
+              </div>
 
-                {/* Action Buttons */}
+              {/* Description Input */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Description <span className="text-red-500">*</span>
+                </label>
+                <textarea
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  rows={4}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                  placeholder="Write a description..."
+                  required
+                />
+                <p className="mt-2 text-sm text-gray-500">
+                  {description.length}/2200 characters
+                </p>
+              </div>
+
+              {/* Tags Input */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Tags
+                </label>
+                <input
+                  type="text"
+                  value={tags}
+                  onChange={(e) => setTags(e.target.value)}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="Enter tags separated by commas (e.g., nature, photography, sunset)"
+                />
+                <p className="mt-2 text-sm text-gray-500">
+                  {tags.split(',').filter(tag => tag.trim().length > 0).length} tag(s)
+                </p>
+              </div>
+
+              {/* Action Buttons */}
+              {preview && (
                 <div className="flex justify-end space-x-4">
                   <button
                     onClick={handleCancel}
@@ -338,8 +388,8 @@ const Upload = () => {
                     )}
                   </button>
                 </div>
-              </div>
-            )}
+              )}
+            </div>
           </div>
           {/* Login Required Overlay */}
           {!isAuthenticated && (

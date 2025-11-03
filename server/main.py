@@ -38,6 +38,78 @@ def run_migrations():
                 logger.info("✅ Migration: Added 'bio' column to users table")
             else:
                 logger.info("✅ Migration: 'bio' column already exists")
+            
+            # Check if views column exists in posts table
+            result = connection.execute(text("""
+                SELECT column_name 
+                FROM information_schema.columns 
+                WHERE table_name='posts' AND column_name='views'
+            """))
+            
+            if result.fetchone() is None:
+                # Column doesn't exist, add it
+                connection.execute(text("""
+                    ALTER TABLE posts 
+                    ADD COLUMN views INTEGER NOT NULL DEFAULT 0
+                """))
+                connection.commit()
+                logger.info("✅ Migration: Added 'views' column to posts table")
+            else:
+                logger.info("✅ Migration: 'views' column already exists")
+            
+            # Check if downloads column exists in posts table
+            result = connection.execute(text("""
+                SELECT column_name 
+                FROM information_schema.columns 
+                WHERE table_name='posts' AND column_name='downloads'
+            """))
+            
+            if result.fetchone() is None:
+                # Column doesn't exist, add it
+                connection.execute(text("""
+                    ALTER TABLE posts 
+                    ADD COLUMN downloads INTEGER NOT NULL DEFAULT 0
+                """))
+                connection.commit()
+                logger.info("✅ Migration: Added 'downloads' column to posts table")
+            else:
+                logger.info("✅ Migration: 'downloads' column already exists")
+            
+            # Check if title column exists in posts table
+            result = connection.execute(text("""
+                SELECT column_name 
+                FROM information_schema.columns 
+                WHERE table_name='posts' AND column_name='title'
+            """))
+            
+            if result.fetchone() is None:
+                # Column doesn't exist, add it
+                connection.execute(text("""
+                    ALTER TABLE posts 
+                    ADD COLUMN title VARCHAR NULL
+                """))
+                connection.commit()
+                logger.info("✅ Migration: Added 'title' column to posts table")
+            else:
+                logger.info("✅ Migration: 'title' column already exists")
+            
+            # Check if tags column exists in posts table
+            result = connection.execute(text("""
+                SELECT column_name 
+                FROM information_schema.columns 
+                WHERE table_name='posts' AND column_name='tags'
+            """))
+            
+            if result.fetchone() is None:
+                # Column doesn't exist, add it
+                connection.execute(text("""
+                    ALTER TABLE posts 
+                    ADD COLUMN tags VARCHAR NULL
+                """))
+                connection.commit()
+                logger.info("✅ Migration: Added 'tags' column to posts table")
+            else:
+                logger.info("✅ Migration: 'tags' column already exists")
                 
         except Exception as e:
             logger.error(f"❌ Migration failed: {e}")
@@ -87,6 +159,34 @@ async def options_handler(full_path: str):
 def read_root():
     return {"message": "Hello from FastAPI on AWS Lambda"}
 
+@app.get("/api/posts/{post_id}")
+def get_post_by_id_workaround(post_id: int, db: Session = Depends(get_db)):
+    """Temporary workaround endpoint for getting a single post by ID"""
+    from models.post import Post
+    from models.user import User
+    
+    post = db.query(Post).filter(Post.id == post_id).first()
+    if not post:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=404, detail="Post not found")
+    
+    user = db.query(User).filter(User.id == post.user_id).first()
+    
+    return {
+        "id": post.id,
+        "user_id": post.user_id,
+        "username": user.username if user else None,
+        "user_full_name": user.full_name if user else None,
+        "image_url": post.image_url,
+        "title": post.title,
+        "caption": post.caption,
+        "tags": post.tags,
+        "views": post.views or 0,
+        "downloads": post.downloads or 0,
+        "created_at": post.created_at.isoformat(),
+        "updated_at": post.updated_at.isoformat()
+    }
+
 @app.get("/api/posts")
 def get_posts_workaround(db: Session = Depends(get_db)):
     """Temporary workaround endpoint for getting posts"""
@@ -104,7 +204,11 @@ def get_posts_workaround(db: Session = Depends(get_db)):
             "username": user.username if user else None,
             "user_full_name": user.full_name if user else None,
             "image_url": post.image_url,
+            "title": post.title,
             "caption": post.caption,
+            "tags": post.tags,
+            "views": post.views or 0,
+            "downloads": post.downloads or 0,
             "created_at": post.created_at.isoformat(),
             "updated_at": post.updated_at.isoformat()
         })
@@ -128,12 +232,48 @@ def get_user_posts_workaround(user_id: int, db: Session = Depends(get_db)):
             "username": user.username if user else None,
             "user_full_name": user.full_name if user else None,
             "image_url": post.image_url,
+            "title": post.title,
             "caption": post.caption,
+            "tags": post.tags,
+            "views": post.views or 0,
+            "downloads": post.downloads or 0,
             "created_at": post.created_at.isoformat(),
             "updated_at": post.updated_at.isoformat()
         })
     
     return result
+
+@app.post("/api/posts/{post_id}/view")
+def track_view_workaround(post_id: int, db: Session = Depends(get_db)):
+    """Track a view for a post"""
+    from models.post import Post
+    from fastapi import HTTPException
+    
+    post = db.query(Post).filter(Post.id == post_id).first()
+    if not post:
+        raise HTTPException(status_code=404, detail="Post not found")
+    
+    post.views = (post.views or 0) + 1
+    db.commit()
+    db.refresh(post)
+    
+    return {"views": post.views}
+
+@app.post("/api/posts/{post_id}/download")
+def track_download_workaround(post_id: int, db: Session = Depends(get_db)):
+    """Track a download for a post"""
+    from models.post import Post
+    from fastapi import HTTPException
+    
+    post = db.query(Post).filter(Post.id == post_id).first()
+    if not post:
+        raise HTTPException(status_code=404, detail="Post not found")
+    
+    post.downloads = (post.downloads or 0) + 1
+    db.commit()
+    db.refresh(post)
+    
+    return {"downloads": post.downloads}
 
 @app.get("/health")
 def health_check(db: Session = Depends(get_db)):

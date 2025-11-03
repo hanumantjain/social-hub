@@ -35,7 +35,11 @@ export interface Post {
   id: number;
   user_id: number;
   image_url: string;
+  title?: string;
   caption?: string;
+  tags?: string;
+  views?: number;
+  downloads?: number;
   created_at: string;
   updated_at: string;
   username?: string;
@@ -205,6 +209,46 @@ export const postsAPI = {
     if (!response.ok) {
       const error: ApiError = await response.json();
       throw new Error(error.detail || 'Failed to fetch user posts');
+    }
+
+    return response.json();
+  },
+
+  // Get a single post by id
+  async getPostById(postId: number): Promise<Post> {
+    const response = await fetch(`${API_BASE_URL}/api/posts/${postId}`);
+
+    if (!response.ok) {
+      const error: ApiError = await response.json();
+      throw new Error(error.detail || 'Failed to fetch post');
+    }
+
+    return response.json();
+  },
+
+  // Track a view for a post
+  async trackView(postId: number): Promise<{ views: number }> {
+    const response = await fetch(`${API_BASE_URL}/api/posts/${postId}/view`, {
+      method: 'POST',
+    });
+
+    if (!response.ok) {
+      const error: ApiError = await response.json();
+      throw new Error(error.detail || 'Failed to track view');
+    }
+
+    return response.json();
+  },
+
+  // Track a download for a post
+  async trackDownload(postId: number): Promise<{ downloads: number }> {
+    const response = await fetch(`${API_BASE_URL}/api/posts/${postId}/download`, {
+      method: 'POST',
+    });
+
+    if (!response.ok) {
+      const error: ApiError = await response.json();
+      throw new Error(error.detail || 'Failed to track download');
     }
 
     return response.json();

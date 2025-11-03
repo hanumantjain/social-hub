@@ -25,7 +25,9 @@ class PresignedUrlResponse(BaseModel):
 
 class ConfirmUploadRequest(BaseModel):
     image_url: str
+    title: str = ""
     caption: str = ""
+    tags: list[str] = []
 
 # Allowed file extensions
 ALLOWED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".gif", ".webp"}
@@ -90,10 +92,13 @@ async def confirm_upload(
     
     try:
         # Create post record
+        tags_str = ",".join(request.tags) if request.tags else None
         db_post = Post(
             user_id=current_user.id,
             image_url=request.image_url,
-            caption=request.caption if request.caption else None
+            title=request.title if request.title else None,
+            caption=request.caption if request.caption else None,
+            tags=tags_str
         )
         
         db.add(db_post)
@@ -107,7 +112,11 @@ async def confirm_upload(
             id=db_post.id,
             user_id=db_post.user_id,
             image_url=db_post.image_url,
+            title=db_post.title,
             caption=db_post.caption,
+            tags=db_post.tags,
+            views=db_post.views or 0,
+            downloads=db_post.downloads or 0,
             created_at=db_post.created_at,
             updated_at=db_post.updated_at,
             username=current_user.username,
@@ -124,6 +133,7 @@ async def confirm_upload(
 @router.post("/upload", response_model=PostResponse)
 async def upload_post(
     file: UploadFile = File(...),
+    title: str = Form(""),
     caption: str = Form(""),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
@@ -175,6 +185,7 @@ async def upload_post(
         db_post = Post(
             user_id=current_user.id,
             image_url=image_url,
+            title=title if title else None,
             caption=caption if caption else None
         )
         db.add(db_post)
@@ -188,7 +199,11 @@ async def upload_post(
             id=db_post.id,
             user_id=db_post.user_id,
             image_url=db_post.image_url,
+            title=db_post.title,
             caption=db_post.caption,
+            tags=db_post.tags,
+            views=db_post.views or 0,
+            downloads=db_post.downloads or 0,
             created_at=db_post.created_at,
             updated_at=db_post.updated_at,
             username=current_user.username,
@@ -224,7 +239,11 @@ async def get_all_posts(
             id=post.id,
             user_id=post.user_id,
             image_url=post.image_url,
+            title=post.title,
             caption=post.caption,
+            tags=post.tags,
+            views=post.views or 0,
+            downloads=post.downloads or 0,
             created_at=post.created_at,
             updated_at=post.updated_at,
             username=user.username if user else None,
@@ -233,6 +252,74 @@ async def get_all_posts(
     
     logger.info(f"Returned {len(response)} posts")
     return response
+
+@router.get("/{post_id}", response_model=PostResponse)
+async def get_post_by_id(
+    post_id: int,
+    db: Session = Depends(get_db)
+):
+    """Get a single post by ID"""
+    logger.info(f"Fetching post: {post_id}")
+    
+    post = db.query(Post).filter(Post.id == post_id).first()
+    if not post:
+        logger.warning(f"Post {post_id} not found")
+        raise HTTPException(status_code=404, detail="Post not found")
+    
+    user = db.query(User).filter(User.id == post.user_id).first()
+    
+    response = PostResponse(
+        id=post.id,
+        user_id=post.user_id,
+        image_url=post.image_url,
+        title=post.title,
+        caption=post.caption,
+        tags=post.tags,
+        views=post.views or 0,
+        downloads=post.downloads or 0,
+        created_at=post.created_at,
+        updated_at=post.updated_at,
+        username=user.username if user else None,
+        user_full_name=user.full_name if user else None
+    )
+    
+    return response
+
+@router.post("/{post_id}/view")
+async def increment_view(
+    post_id: int,
+    db: Session = Depends(get_db)
+):
+    """Increment view count for a post"""
+    logger.info(f"Incrementing view for post: {post_id}")
+    
+    post = db.query(Post).filter(Post.id == post_id).first()
+    if not post:
+        raise HTTPException(status_code=404, detail="Post not found")
+    
+    post.views = (post.views or 0) + 1
+    db.commit()
+    db.refresh(post)
+    
+    return {"views": post.views}
+
+@router.post("/{post_id}/download")
+async def increment_download(
+    post_id: int,
+    db: Session = Depends(get_db)
+):
+    """Increment download count for a post"""
+    logger.info(f"Incrementing download for post: {post_id}")
+    
+    post = db.query(Post).filter(Post.id == post_id).first()
+    if not post:
+        raise HTTPException(status_code=404, detail="Post not found")
+    
+    post.downloads = (post.downloads or 0) + 1
+    db.commit()
+    db.refresh(post)
+    
+    return {"downloads": post.downloads}
 
 @router.delete("/{post_id}")
 async def delete_post(
