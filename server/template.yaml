@@ -5,7 +5,7 @@ Description: "Social FastAPI Lamda Template"
 Globals:
   Api:
     Cors:
-      AllowOrigin: "'https://social.hanumantjain.tech'"
+      AllowOrigin: "'https://galleryai.hanumantjain.tech'"
       AllowHeaders: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token,Accept'"
       AllowMethods: "'GET,POST,PUT,DELETE,OPTIONS,PATCH'"
 

@@ -69,7 +69,7 @@ class S3Handler:
             file_extension = Path(filename).suffix.lower()
             unique_filename = f"posts/{uuid.uuid4()}{file_extension}"
             
-            # Upload to S3 with public-read ACL
+            # Upload to S3 with public-read ACL and optimized cache headers
             self.s3_client.upload_fileobj(
                 file_obj,
                 self.bucket_name,
@@ -77,7 +77,8 @@ class S3Handler:
                 ExtraArgs={
                     'ContentType': content_type,
                     'ACL': 'public-read',  # Make uploaded files publicly readable
-                    'CacheControl': 'max-age=31536000',  # Cache for 1 year
+                    'CacheControl': 'public, max-age=31536000, immutable',  # Cache for 1 year
+                    'Expires': None,  # Let CloudFront handle expiration
                 }
             )
             
@@ -183,13 +184,14 @@ class S3Handler:
             
             logger.info(f"Generating pre-signed URL for upload: {key}")
             
-            # Generate pre-signed URL for PUT operation
+            # Generate pre-signed URL for PUT operation with cache headers
             presigned_url = self.s3_client.generate_presigned_url(
                 'put_object',
                 Params={
                     'Bucket': self.bucket_name,
                     'Key': key,
                     'ContentType': content_type,
+                    'CacheControl': 'public, max-age=31536000, immutable',
                 },
                 ExpiresIn=expires_in,
                 HttpMethod='PUT'

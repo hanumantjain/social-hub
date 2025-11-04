@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Depends
+from fastapi import FastAPI, Depends, Request
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from sqlalchemy import text
@@ -35,7 +35,8 @@ app.add_middleware(RequestLoggingMiddleware)
 # CORS configuration
 cors_origins = [
     "http://localhost:5173",
-    "https://social.hanumantjain.tech",
+    "https://galleryai.hanumantjain.tech",
+    "https://social.hanumantjain.tech",  # Keep old domain for backward compatibility
     "https://fg5373zzn7.execute-api.us-east-1.amazonaws.com",
 ]
 
@@ -54,11 +55,17 @@ app.include_router(posts_router, prefix="/posts", tags=["posts"])
 
 # Explicit OPTIONS handler for CORS preflight
 @app.options("/{full_path:path}")
-async def options_handler(full_path: str):
+async def options_handler(full_path: str, request: Request):
     """Handle preflight OPTIONS requests for CORS"""
     from fastapi import Response
     response = Response()
-    response.headers["Access-Control-Allow-Origin"] = "https://social.hanumantjain.tech"
+    # Get origin from request header and validate against allowed origins
+    origin = request.headers.get("origin", "")
+    if origin in cors_origins:
+        response.headers["Access-Control-Allow-Origin"] = origin
+    else:
+        # Default to new domain
+        response.headers["Access-Control-Allow-Origin"] = "https://galleryai.hanumantjain.tech"
     response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS, PATCH"
     response.headers["Access-Control-Allow-Headers"] = "*"
     response.headers["Access-Control-Allow-Credentials"] = "true"

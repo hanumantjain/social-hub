@@ -149,6 +149,9 @@ const PostDetail = () => {
           <div className="w-full">
             <img
               src={post.image_url}
+              loading="eager"
+              fetchPriority="high"
+              decoding="async"
               alt={post.caption || 'Photo'}
               className="w-full h-auto rounded-lg shadow"
               onError={(e) => {

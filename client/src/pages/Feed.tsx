@@ -111,6 +111,9 @@ const Feed = () => {
                     src={post.image_url}
                     alt={post.caption || "Post"}
                     className="w-full h-auto object-cover"
+                    loading="lazy"
+                    decoding="async"
+                    fetchPriority="low"
                     onError={(e) => {
                       const target = e.target as HTMLImageElement;
                       target.src = "https://via.placeholder.com/600x400?text=Image+Not+Found";
