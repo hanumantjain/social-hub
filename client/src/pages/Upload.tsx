@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import Navbar from "../components/Navbar";
-import { tokenManager } from "../services/api";
+import { tokenManager, postsAPI } from "../services/api";
 
 const Upload = () => {
   const navigate = useNavigate();
@@ -86,8 +86,7 @@ const Upload = () => {
       return;
     }
 
-    const token = tokenManager.getToken();
-    if (!token) {
+    if (!tokenManager.isAuthenticated()) {
       navigate("/login");
       return;
     }
@@ -103,71 +102,19 @@ const Upload = () => {
 
     try {
       // Step 1: Get presigned URL from backend
-      console.log("Requesting presigned URL...");
-      const response = await fetch(
-        `${import.meta.env.VITE_API_URL || "http://localhost:8000"}/posts/presigned-url`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({
-            filename: selectedFile.name,
-            content_type: selectedFile.type,
-          }),
-        }
-      );
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.detail || "Failed to get upload URL");
-      }
-
-      const presignedData = await response.json();
-      console.log("Presigned URL received:", presignedData.key);
+      const presignedData = await postsAPI.getPresignedUrl(selectedFile.name, selectedFile.type);
 
       // Step 2: Upload directly to S3
-      console.log("Uploading to S3...");
-      const uploadResponse = await fetch(presignedData.upload_url, {
-        method: "PUT",
-        headers: {
-          "Content-Type": selectedFile.type,
-        },
-        body: selectedFile,
-      });
-
-      if (!uploadResponse.ok) {
-        throw new Error(`S3 upload failed: ${uploadResponse.status} ${uploadResponse.statusText}`);
-      }
-
-      console.log("Upload to S3 successful!");
+      await postsAPI.uploadToS3(presignedData.upload_url, selectedFile);
 
       // Step 3: Confirm upload with backend
-      console.log("Confirming upload...");
-      const confirmResponse = await fetch(
-        `${import.meta.env.VITE_API_URL || "http://localhost:8000"}/posts/confirm-upload`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({
-            image_url: presignedData.public_url,
-            title: title.trim(),
-            caption: description.trim(),
-            tags: tags.split(',').map(tag => tag.trim()).filter(tag => tag.length > 0),
-          }),
-        }
+      const tagsArray = tags.split(',').map(tag => tag.trim()).filter(tag => tag.length > 0);
+      await postsAPI.confirmUpload(
+        presignedData.public_url,
+        description.trim(),
+        title.trim(),
+        tagsArray.length > 0 ? tagsArray.join(',') : undefined
       );
-
-      if (!confirmResponse.ok) {
-        const error = await confirmResponse.json();
-        throw new Error(error.detail || "Failed to confirm upload");
-      }
-
-      console.log("Upload confirmed!");
       
       // Success - redirect to feed
       navigate("/");

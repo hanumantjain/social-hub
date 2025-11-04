@@ -21,14 +21,13 @@ const Profile = () => {
 
   useEffect(() => {
     const fetchUserProfile = async () => {
-      const token = tokenManager.getToken();
-      if (!token) {
+      if (!tokenManager.isAuthenticated()) {
         navigate("/login");
         return;
       }
 
       try {
-        const userData = await authAPI.getCurrentUser(token);
+        const userData = await authAPI.getCurrentUser();
         setUser(userData);
         setFullName(userData.full_name || "");
         setUsername(userData.username || "");
@@ -46,11 +45,7 @@ const Profile = () => {
         }
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to load profile");
-        // If token is invalid, redirect to login
-        if (err instanceof Error && err.message.includes("credentials")) {
-          tokenManager.removeToken();
-          navigate("/login");
-        }
+        // Global handler will redirect to login if token is expired
       } finally {
         setIsLoading(false);
       }
@@ -64,8 +59,7 @@ const Profile = () => {
     setError("");
     
     try {
-      const token = tokenManager.getToken();
-      if (!token) {
+      if (!tokenManager.isAuthenticated()) {
         navigate("/login");
         return;
       }
@@ -86,7 +80,7 @@ const Profile = () => {
       }
 
       // Call API to update profile
-      const updatedUser = await authAPI.updateProfile(token, updateData);
+      const updatedUser = await authAPI.updateProfile(updateData);
       setUser(updatedUser);
       
       setSaveSuccess(true);

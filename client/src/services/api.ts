@@ -94,11 +94,10 @@ export const authAPI = {
   },
 
   // Get current user
-  async getCurrentUser(token: string): Promise<User> {
-    const response = await fetch(`${API_BASE_URL}/auth/me`, {
+  async getCurrentUser(token?: string): Promise<User> {
+    const response = await authenticatedFetch(`${API_BASE_URL}/auth/me`, {
       method: 'GET',
       headers: {
-        'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json',
       },
     });
@@ -112,11 +111,10 @@ export const authAPI = {
   },
 
   // Update user profile
-  async updateProfile(token: string, profileData: UpdateProfileRequest): Promise<User> {
-    const response = await fetch(`${API_BASE_URL}/auth/me`, {
+  async updateProfile(profileData: UpdateProfileRequest): Promise<User> {
+    const response = await authenticatedFetch(`${API_BASE_URL}/auth/me`, {
       method: 'PATCH',
       headers: {
-        'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(profileData),
@@ -134,16 +132,15 @@ export const authAPI = {
 // Posts API
 export const postsAPI = {
   // Get presigned URL for direct S3 upload (for large files)
-  async getPresignedUrl(filename: string, contentType: string, token: string): Promise<{
+  async getPresignedUrl(filename: string, contentType: string): Promise<{
     upload_url: string;
     key: string;
     public_url: string;
   }> {
-    const response = await fetch(`${API_BASE_URL}/posts/presigned-url`, {
+    const response = await authenticatedFetch(`${API_BASE_URL}/posts/presigned-url`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`,
       },
       body: JSON.stringify({ filename, content_type: contentType }),
     });
@@ -172,14 +169,13 @@ export const postsAPI = {
   },
 
   // Confirm upload and create post record
-  async confirmUpload(imageUrl: string, caption: string, token: string): Promise<Post> {
-    const response = await fetch(`${API_BASE_URL}/posts/confirm-upload`, {
+  async confirmUpload(imageUrl: string, caption: string, title?: string, tags?: string): Promise<Post> {
+    const response = await authenticatedFetch(`${API_BASE_URL}/posts/confirm-upload`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`,
       },
-      body: JSON.stringify({ image_url: imageUrl, caption }),
+      body: JSON.stringify({ image_url: imageUrl, caption, title, tags }),
     });
 
     if (!response.ok) {
@@ -226,10 +222,25 @@ export const postsAPI = {
     return response.json();
   },
 
-  // Track a view for a post
+  // Delete post
+  async deletePost(postId: number): Promise<void> {
+    const response = await authenticatedFetch(`${API_BASE_URL}/posts/${postId}`, {
+      method: 'DELETE',
+    });
+
+    if (!response.ok) {
+      const error: ApiError = await response.json();
+      throw new Error(error.detail || 'Failed to delete post');
+    }
+  },
+
+  // Track view
   async trackView(postId: number): Promise<{ views: number }> {
-    const response = await fetch(`${API_BASE_URL}/api/posts/${postId}/view`, {
+    const response = await authenticatedFetch(`${API_BASE_URL}/api/posts/${postId}/view`, {
       method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
     });
 
     if (!response.ok) {
@@ -240,10 +251,13 @@ export const postsAPI = {
     return response.json();
   },
 
-  // Track a download for a post
+  // Track download
   async trackDownload(postId: number): Promise<{ downloads: number }> {
-    const response = await fetch(`${API_BASE_URL}/api/posts/${postId}/download`, {
+    const response = await authenticatedFetch(`${API_BASE_URL}/api/posts/${postId}/download`, {
       method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
     });
 
     if (!response.ok) {
@@ -253,24 +267,43 @@ export const postsAPI = {
 
     return response.json();
   },
-
-  // Delete post
-  async deletePost(postId: number, token: string): Promise<void> {
-    const response = await fetch(`${API_BASE_URL}/posts/${postId}`, {
-      method: 'DELETE',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-      },
-    });
-
-    if (!response.ok) {
-      const error: ApiError = await response.json();
-      throw new Error(error.detail || 'Failed to delete post');
-    }
-  },
 };
 
-// Token management
+// JWT Token Utilities
+function decodeJWT(token: string): { exp?: number; sub?: string } | null {
+  try {
+    const base64Url = token.split('.')[1];
+    if (!base64Url) return null;
+    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+    const jsonPayload = decodeURIComponent(
+      atob(base64)
+        .split('')
+        .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+        .join('')
+    );
+    return JSON.parse(jsonPayload);
+  } catch (error) {
+    return null;
+  }
+}
+
+function isTokenExpired(token: string): boolean {
+  const decoded = decodeJWT(token);
+  if (!decoded || !decoded.exp) return true;
+  
+  // Check if token is expired (exp is in seconds, Date.now() is in milliseconds)
+  const expirationTime = decoded.exp * 1000;
+  return Date.now() >= expirationTime;
+}
+
+// Global error handler for authentication
+let onAuthError: (() => void) | null = null;
+
+export function setAuthErrorHandler(handler: () => void): void {
+  onAuthError = handler;
+}
+
+// Token management (defined before authenticatedFetch)
 export const tokenManager = {
   // Save token to localStorage
   saveToken(token: string): void {
@@ -287,8 +320,65 @@ export const tokenManager = {
     localStorage.removeItem('access_token');
   },
 
-  // Check if user is authenticated
+  // Check if user is authenticated and token is valid
   isAuthenticated(): boolean {
-    return !!this.getToken();
+    const token = this.getToken();
+    if (!token) return false;
+    return !isTokenExpired(token);
+  },
+
+  // Check if token is expired (useful for warnings)
+  isTokenExpired(): boolean {
+    const token = this.getToken();
+    if (!token) return true;
+    return isTokenExpired(token);
+  },
+
+  // Get token expiration time (for display)
+  getTokenExpiration(): Date | null {
+    const token = this.getToken();
+    if (!token) return null;
+    const decoded = decodeJWT(token);
+    if (!decoded || !decoded.exp) return null;
+    return new Date(decoded.exp * 1000);
   },
 };
+
+// Enhanced fetch wrapper with 401 handling
+async function authenticatedFetch(
+  url: string,
+  options: RequestInit = {}
+): Promise<Response> {
+  const token = tokenManager.getToken();
+  
+  // Check if token exists and is not expired
+  if (token && isTokenExpired(token)) {
+    tokenManager.removeToken();
+    if (onAuthError) {
+      onAuthError();
+    }
+    throw new Error('Session expired. Please login again.');
+  }
+
+  // Add Authorization header if token exists
+  const headers = new Headers(options.headers);
+  if (token) {
+    headers.set('Authorization', `Bearer ${token}`);
+  }
+
+  const response = await fetch(url, {
+    ...options,
+    headers,
+  });
+
+  // Handle 401 Unauthorized globally
+  if (response.status === 401) {
+    tokenManager.removeToken();
+    if (onAuthError) {
+      onAuthError();
+    }
+    throw new Error('Session expired. Please login again.');
+  }
+
+  return response;
+}

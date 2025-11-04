@@ -1,12 +1,24 @@
-import { Route, Routes } from "react-router-dom"
+import { Route, Routes, useNavigate } from "react-router-dom"
+import { useEffect } from "react"
 import Login from "./pages/Login"
 import Signup from "./pages/Signup"
 import Feed from "./pages/Feed"
 import Profile from "./pages/Profile"
 import Upload from "./pages/Upload"
 import PostDetail from "./pages/PostDetail"
+import { setAuthErrorHandler } from "./services/api"
 
 function App() {
+  const navigate = useNavigate()
+
+  useEffect(() => {
+    // Set up global auth error handler
+    setAuthErrorHandler(() => {
+      // Redirect to login with current path as redirect parameter
+      const currentPath = window.location.pathname
+      navigate(`/login?redirect=${encodeURIComponent(currentPath)}`)
+    })
+  }, [navigate])
   
   return (
     <div className="min-h-screen bg-white">
