@@ -31,7 +31,6 @@ Resources:
           SECRET_KEY: !Sub "{{resolve:ssm:/socialapp/SECRET_KEY}}"
           ALGORITHM: !Sub "{{resolve:ssm:/socialapp/ALGORITHM}}"
           ACCESS_TOKEN_EXPIRE_MINUTES: !Sub "{{resolve:ssm:/socialapp/ACCESS_TOKEN_EXPIRE_MINUTES}}"
-          CORS_ORIGINS: !Sub "{{resolve:ssm:/socialapp/CORS_ORIGINS}}"
           S3_BUCKET_NAME: !Sub "{{resolve:ssm:/socialapp/S3_BUCKET_NAME}}"
       Events:
         ApiGatewayEvent:
