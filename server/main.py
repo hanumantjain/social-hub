@@ -134,6 +134,7 @@ app.add_middleware(RequestLoggingMiddleware)
 cors_origins = [
     "http://localhost:5173",
     "https://social.hanumantjain.tech",
+    "https://fg5373zzn7.execute-api.us-east-1.amazonaws.com",
 ]
 
 app.add_middleware(
@@ -153,7 +154,13 @@ app.include_router(posts_router, prefix="/posts", tags=["posts"])
 @app.options("/{full_path:path}")
 async def options_handler(full_path: str):
     """Handle preflight OPTIONS requests for CORS"""
-    return {"message": "OK"}
+    from fastapi import Response
+    response = Response()
+    response.headers["Access-Control-Allow-Origin"] = "https://social.hanumantjain.tech"
+    response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS, PATCH"
+    response.headers["Access-Control-Allow-Headers"] = "*"
+    response.headers["Access-Control-Allow-Credentials"] = "true"
+    return response
 
 @app.get("/")
 def read_root():
@@ -164,28 +171,34 @@ def get_post_by_id_workaround(post_id: int, db: Session = Depends(get_db)):
     """Temporary workaround endpoint for getting a single post by ID"""
     from models.post import Post
     from models.user import User
+    from fastapi import HTTPException
     
-    post = db.query(Post).filter(Post.id == post_id).first()
-    if not post:
-        from fastapi import HTTPException
-        raise HTTPException(status_code=404, detail="Post not found")
-    
-    user = db.query(User).filter(User.id == post.user_id).first()
-    
-    return {
-        "id": post.id,
-        "user_id": post.user_id,
-        "username": user.username if user else None,
-        "user_full_name": user.full_name if user else None,
-        "image_url": post.image_url,
-        "title": post.title,
-        "caption": post.caption,
-        "tags": post.tags,
-        "views": post.views or 0,
-        "downloads": post.downloads or 0,
-        "created_at": post.created_at.isoformat(),
-        "updated_at": post.updated_at.isoformat()
-    }
+    try:
+        post = db.query(Post).filter(Post.id == post_id).first()
+        if not post:
+            raise HTTPException(status_code=404, detail="Post not found")
+        
+        user = db.query(User).filter(User.id == post.user_id).first()
+        
+        return {
+            "id": post.id,
+            "user_id": post.user_id,
+            "username": user.username if user else None,
+            "user_full_name": user.full_name if user else None,
+            "image_url": post.image_url,
+            "title": getattr(post, 'title', None),
+            "caption": post.caption,
+            "tags": getattr(post, 'tags', None),
+            "views": getattr(post, 'views', 0) or 0,
+            "downloads": getattr(post, 'downloads', 0) or 0,
+            "created_at": post.created_at.isoformat(),
+            "updated_at": post.updated_at.isoformat()
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error fetching post {post_id}: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to fetch post: {str(e)}")
 
 @app.get("/api/posts")
 def get_posts_workaround(db: Session = Depends(get_db)):
@@ -193,55 +206,65 @@ def get_posts_workaround(db: Session = Depends(get_db)):
     from models.post import Post
     from models.user import User
     
-    posts = db.query(Post).order_by(Post.created_at.desc()).limit(20).all()
-    result = []
-    
-    for post in posts:
-        user = db.query(User).filter(User.id == post.user_id).first()
-        result.append({
-            "id": post.id,
-            "user_id": post.user_id,
-            "username": user.username if user else None,
-            "user_full_name": user.full_name if user else None,
-            "image_url": post.image_url,
-            "title": post.title,
-            "caption": post.caption,
-            "tags": post.tags,
-            "views": post.views or 0,
-            "downloads": post.downloads or 0,
-            "created_at": post.created_at.isoformat(),
-            "updated_at": post.updated_at.isoformat()
-        })
-    
-    return result
+    try:
+        posts = db.query(Post).order_by(Post.created_at.desc()).limit(20).all()
+        result = []
+        
+        for post in posts:
+            user = db.query(User).filter(User.id == post.user_id).first()
+            result.append({
+                "id": post.id,
+                "user_id": post.user_id,
+                "username": user.username if user else None,
+                "user_full_name": user.full_name if user else None,
+                "image_url": post.image_url,
+                "title": getattr(post, 'title', None),
+                "caption": post.caption,
+                "tags": getattr(post, 'tags', None),
+                "views": getattr(post, 'views', 0) or 0,
+                "downloads": getattr(post, 'downloads', 0) or 0,
+                "created_at": post.created_at.isoformat(),
+                "updated_at": post.updated_at.isoformat()
+            })
+        
+        return result
+    except Exception as e:
+        logger.error(f"Error fetching posts: {str(e)}")
+        from fastapi import HTTPException
+        raise HTTPException(status_code=500, detail=f"Failed to fetch posts: {str(e)}")
 
 @app.get("/api/posts/user/{user_id}")
 def get_user_posts_workaround(user_id: int, db: Session = Depends(get_db)):
     """Temporary workaround endpoint for getting user posts"""
     from models.post import Post
     from models.user import User
+    from fastapi import HTTPException
     
-    posts = db.query(Post).filter(Post.user_id == user_id).order_by(Post.created_at.desc()).all()
-    result = []
-    
-    for post in posts:
-        user = db.query(User).filter(User.id == post.user_id).first()
-        result.append({
-            "id": post.id,
-            "user_id": post.user_id,
-            "username": user.username if user else None,
-            "user_full_name": user.full_name if user else None,
-            "image_url": post.image_url,
-            "title": post.title,
-            "caption": post.caption,
-            "tags": post.tags,
-            "views": post.views or 0,
-            "downloads": post.downloads or 0,
-            "created_at": post.created_at.isoformat(),
-            "updated_at": post.updated_at.isoformat()
-        })
-    
-    return result
+    try:
+        posts = db.query(Post).filter(Post.user_id == user_id).order_by(Post.created_at.desc()).all()
+        result = []
+        
+        for post in posts:
+            user = db.query(User).filter(User.id == post.user_id).first()
+            result.append({
+                "id": post.id,
+                "user_id": post.user_id,
+                "username": user.username if user else None,
+                "user_full_name": user.full_name if user else None,
+                "image_url": post.image_url,
+                "title": getattr(post, 'title', None),
+                "caption": post.caption,
+                "tags": getattr(post, 'tags', None),
+                "views": getattr(post, 'views', 0) or 0,
+                "downloads": getattr(post, 'downloads', 0) or 0,
+                "created_at": post.created_at.isoformat(),
+                "updated_at": post.updated_at.isoformat()
+            })
+        
+        return result
+    except Exception as e:
+        logger.error(f"Error fetching user posts: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to fetch user posts: {str(e)}")
 
 @app.post("/api/posts/{post_id}/view")
 def track_view_workaround(post_id: int, db: Session = Depends(get_db)):

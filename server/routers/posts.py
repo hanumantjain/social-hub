@@ -229,29 +229,38 @@ async def get_all_posts(
     """Get all posts (feed)"""
     logger.info(f"Fetching posts: skip={skip}, limit={limit}")
     
-    posts = db.query(Post).order_by(Post.created_at.desc()).offset(skip).limit(limit).all()
-    
-    # Add user info to each post
-    response = []
-    for post in posts:
-        user = db.query(User).filter(User.id == post.user_id).first()
-        response.append(PostResponse(
-            id=post.id,
-            user_id=post.user_id,
-            image_url=post.image_url,
-            title=post.title,
-            caption=post.caption,
-            tags=post.tags,
-            views=post.views or 0,
-            downloads=post.downloads or 0,
-            created_at=post.created_at,
-            updated_at=post.updated_at,
-            username=user.username if user else None,
-            user_full_name=user.full_name if user else None
-        ))
-    
-    logger.info(f"Returned {len(response)} posts")
-    return response
+    try:
+        posts = db.query(Post).order_by(Post.created_at.desc()).offset(skip).limit(limit).all()
+        
+        # Add user info to each post
+        response = []
+        for post in posts:
+            user = db.query(User).filter(User.id == post.user_id).first()
+            try:
+                response.append(PostResponse(
+                    id=post.id,
+                    user_id=post.user_id,
+                    image_url=post.image_url,
+                    title=getattr(post, 'title', None),
+                    caption=post.caption,
+                    tags=getattr(post, 'tags', None),
+                    views=getattr(post, 'views', 0) or 0,
+                    downloads=getattr(post, 'downloads', 0) or 0,
+                    created_at=post.created_at,
+                    updated_at=post.updated_at,
+                    username=user.username if user else None,
+                    user_full_name=user.full_name if user else None
+                ))
+            except Exception as e:
+                logger.error(f"Error processing post {post.id}: {str(e)}")
+                # Skip this post if there's an error
+                continue
+        
+        logger.info(f"Returned {len(response)} posts")
+        return response
+    except Exception as e:
+        logger.error(f"Error fetching posts: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to fetch posts: {str(e)}")
 
 @router.get("/{post_id}", response_model=PostResponse)
 async def get_post_by_id(
@@ -261,29 +270,35 @@ async def get_post_by_id(
     """Get a single post by ID"""
     logger.info(f"Fetching post: {post_id}")
     
-    post = db.query(Post).filter(Post.id == post_id).first()
-    if not post:
-        logger.warning(f"Post {post_id} not found")
-        raise HTTPException(status_code=404, detail="Post not found")
-    
-    user = db.query(User).filter(User.id == post.user_id).first()
-    
-    response = PostResponse(
-        id=post.id,
-        user_id=post.user_id,
-        image_url=post.image_url,
-        title=post.title,
-        caption=post.caption,
-        tags=post.tags,
-        views=post.views or 0,
-        downloads=post.downloads or 0,
-        created_at=post.created_at,
-        updated_at=post.updated_at,
-        username=user.username if user else None,
-        user_full_name=user.full_name if user else None
-    )
-    
-    return response
+    try:
+        post = db.query(Post).filter(Post.id == post_id).first()
+        if not post:
+            logger.warning(f"Post {post_id} not found")
+            raise HTTPException(status_code=404, detail="Post not found")
+        
+        user = db.query(User).filter(User.id == post.user_id).first()
+        
+        response = PostResponse(
+            id=post.id,
+            user_id=post.user_id,
+            image_url=post.image_url,
+            title=getattr(post, 'title', None),
+            caption=post.caption,
+            tags=getattr(post, 'tags', None),
+            views=getattr(post, 'views', 0) or 0,
+            downloads=getattr(post, 'downloads', 0) or 0,
+            created_at=post.created_at,
+            updated_at=post.updated_at,
+            username=user.username if user else None,
+            user_full_name=user.full_name if user else None
+        )
+        
+        return response
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error fetching post {post_id}: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to fetch post: {str(e)}")
 
 @router.post("/{post_id}/view")
 async def increment_view(
