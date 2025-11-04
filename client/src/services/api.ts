@@ -94,7 +94,7 @@ export const authAPI = {
   },
 
   // Get current user
-  async getCurrentUser(token?: string): Promise<User> {
+  async getCurrentUser(): Promise<User> {
     const response = await authenticatedFetch(`${API_BASE_URL}/auth/me`, {
       method: 'GET',
       headers: {
