@@ -37,8 +37,18 @@ pipeline {
                 withAWS(credentials: 'aws-credentials-id', region: "${AWS_DEFAULT_REGION}") {
                     dir('client/dist') {
                         sh '''
-                            echo "Deploying to S3..."
-                            aws s3 sync . s3://${S3_BUCKET} --delete
+                            echo "Deploying static assets to S3 with long-term caching..."
+                            # Deploy static assets (JS, CSS, images, fonts) with long-term cache
+                            aws s3 sync . s3://${S3_BUCKET} \
+                                --exclude "*.html" \
+                                --cache-control "public,max-age=31536000,immutable" \
+                                --delete
+                            
+                            echo "Deploying HTML files to S3 with no-cache..."
+                            # Deploy HTML files with no-cache (without --delete to avoid affecting other files)
+                            aws s3 sync . s3://${S3_BUCKET} \
+                                --include "*.html" \
+                                --cache-control "no-cache"
                         '''
                     }
                 }
