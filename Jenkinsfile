@@ -42,13 +42,16 @@ pipeline {
                             aws s3 sync . s3://${S3_BUCKET} \
                                 --exclude "*.html" \
                                 --cache-control "public,max-age=31536000,immutable" \
-                                --delete
+                                --delete \
+                                --only-show-errors
                             
                             echo "Deploying HTML files to S3 with no-cache..."
                             # Deploy HTML files with no-cache (without --delete to avoid affecting other files)
                             aws s3 sync . s3://${S3_BUCKET} \
+                                --exclude "*" \
                                 --include "*.html" \
-                                --cache-control "no-cache"
+                                --cache-control "public,max-age=60,must-revalidate" \
+                                --only-show-errors
                         '''
                     }
                 }
@@ -59,7 +62,7 @@ pipeline {
                 withAWS(credentials: 'aws-credentials-id', region: "${AWS_DEFAULT_REGION}") {
                     sh '''
                         echo "Invalidating CloudFront cache..."
-                        aws cloudfront create-invalidation --distribution-id ${CLOUDFRONT_DISTRIBUTION_ID} --paths "/*"
+                        aws cloudfront create-invalidation --distribution-id ${CLOUDFRONT_DISTRIBUTION_ID} --paths "/*.html" "/index.html"
                     '''
                 }
             }
