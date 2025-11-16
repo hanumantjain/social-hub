@@ -6,8 +6,12 @@ Globals:
   Api:
     Cors:
       AllowOrigin: "'https://galleryai.hanumantjain.tech'"
-      AllowHeaders: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token,Accept'"
+      AllowHeaders: "'*'"
       AllowMethods: "'GET,POST,PUT,DELETE,OPTIONS,PATCH'"
+      AllowCredentials: true
+      MaxAge: "'3600'"
+    BinaryMediaTypes:
+      - '*/*'
 
 Resources:
   SocialFastAPIFunction:
@@ -32,6 +36,8 @@ Resources:
           ALGORITHM: !Sub "{{resolve:ssm:/socialapp/ALGORITHM}}"
           ACCESS_TOKEN_EXPIRE_MINUTES: !Sub "{{resolve:ssm:/socialapp/ACCESS_TOKEN_EXPIRE_MINUTES}}"
           S3_BUCKET_NAME: !Sub "{{resolve:ssm:/socialapp/S3_BUCKET_NAME}}"
+          CORS_ORIGINS: "https://galleryai.hanumantjain.tech"
+          GOOGLE_CLIENT_ID: !Sub "{{resolve:ssm:/socialapp/GOOGLE_CLIENT_ID}}"
       Events:
         ApiGatewayEvent:
           Type: Api
