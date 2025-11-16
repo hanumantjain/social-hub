@@ -70,8 +70,8 @@ app.add_middleware(
 
 # Helper function to add CORS headers to any response
 def add_cors_headers(response, origin: str = None):
-    """Add CORS headers to response"""
-    # Check if origin is allowed (case-insensitive check)
+    """Add CORS headers to response - always adds headers regardless of origin"""
+    # Always check if origin is in allowed list (case-insensitive)
     origin_lower = origin.lower() if origin else ""
     allowed_origin = None
     
@@ -80,16 +80,23 @@ def add_cors_headers(response, origin: str = None):
             allowed_origin = allowed
             break
     
-    # Set the origin (use first allowed if no match, or use wildcard if credentials not needed)
+    # Set the origin - use matched origin or first in list
     if allowed_origin:
         response.headers["Access-Control-Allow-Origin"] = allowed_origin
     elif cors_origins:
+        # If origin doesn't match but we have allowed origins, use first one
+        # This handles cases where origin might be slightly different
         response.headers["Access-Control-Allow-Origin"] = cors_origins[0]
+    else:
+        # Fallback - should not happen in production
+        response.headers["Access-Control-Allow-Origin"] = origin if origin else "*"
     
+    # Always set these headers
     response.headers["Access-Control-Allow-Credentials"] = "true"
     response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS, PATCH"
     response.headers["Access-Control-Allow-Headers"] = "*"
     response.headers["Access-Control-Max-Age"] = "3600"
+    
     return response
 
 # Exception handlers to ensure CORS headers are included in error responses
@@ -128,20 +135,25 @@ async def general_exception_handler(request: Request, exc: Exception):
 @app.middleware("http")
 async def ensure_cors_headers(request: Request, call_next):
     """Ensure CORS headers are added to all responses, including redirects"""
+    # Get origin from request early
+    origin = request.headers.get("origin", "")
+    
     # Handle OPTIONS preflight requests directly
     if request.method == "OPTIONS":
-        origin = request.headers.get("origin", "")
         response = JSONResponse(content={}, status_code=200)
         return add_cors_headers(response, origin)
     
+    # Log the path for debugging
+    path = request.url.path
+    logger.debug(f"Request path: {path}, Origin: {origin}")
+    
     response = await call_next(request)
     
-    # Get origin from request
-    origin = request.headers.get("origin", "")
+    # Force add CORS headers to ALL responses (even if already present, ensures they're correct)
+    add_cors_headers(response, origin)
     
-    # Add CORS headers if not already present (handles redirects and all responses)
-    if "Access-Control-Allow-Origin" not in response.headers:
-        add_cors_headers(response, origin)
+    # Log CORS headers for debugging
+    logger.debug(f"Response headers: Access-Control-Allow-Origin = {response.headers.get('Access-Control-Allow-Origin')}")
     
     return response
 

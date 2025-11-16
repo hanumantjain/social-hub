@@ -83,14 +83,14 @@ pipeline {
                 withAWS(credentials: 'aws-credentials-id', region: "${AWS_DEFAULT_REGION}") {
                     dir('server') {
                         sh '''
-                            echo "Deploying FastAPI backend to Lambda..."
-                            sam deploy \
-                                --stack-name ${LAMBDA_FUNCTION_NAME} \
-                                --s3-bucket ${SAM_ARTIFACTS_BUCKET} \
-                                --no-confirm-changeset \
-                                --capabilities CAPABILITY_IAM \
-                                --region ${AWS_DEFAULT_REGION} \
-                                --no-fail-on-empty-changeset
+                        echo "Deploying FastAPI backend to Lambda..."
+                        sam deploy \
+                            --stack-name ${LAMBDA_FUNCTION_NAME} \
+                            --s3-bucket ${SAM_ARTIFACTS_BUCKET} \
+                            --no-confirm-changeset \
+                            --capabilities CAPABILITY_IAM \
+                            --region ${AWS_DEFAULT_REGION} \
+                            --no-fail-on-empty-changeset
                         '''
                     }
                 }

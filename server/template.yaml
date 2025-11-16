@@ -12,6 +12,8 @@ Globals:
       MaxAge: "'3600'"
     BinaryMediaTypes:
       - '*/*'
+    EndpointConfiguration:
+      Type: REGIONAL
 
 Resources:
   SocialFastAPIFunction:
