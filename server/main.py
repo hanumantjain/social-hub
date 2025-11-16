@@ -124,16 +124,22 @@ async def general_exception_handler(request: Request, exc: Exception):
     )
     return add_cors_headers(response, origin)
 
-# Add middleware to ensure CORS headers on all responses
+# Add middleware to ensure CORS headers on all responses (must be after CORS middleware)
 @app.middleware("http")
-async def cors_middleware(request: Request, call_next):
-    """Ensure CORS headers are added to all responses"""
+async def ensure_cors_headers(request: Request, call_next):
+    """Ensure CORS headers are added to all responses, including redirects"""
+    # Handle OPTIONS preflight requests directly
+    if request.method == "OPTIONS":
+        origin = request.headers.get("origin", "")
+        response = JSONResponse(content={}, status_code=200)
+        return add_cors_headers(response, origin)
+    
     response = await call_next(request)
     
     # Get origin from request
     origin = request.headers.get("origin", "")
     
-    # Add CORS headers if not already present
+    # Add CORS headers if not already present (handles redirects and all responses)
     if "Access-Control-Allow-Origin" not in response.headers:
         add_cors_headers(response, origin)
     
