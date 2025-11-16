@@ -141,10 +141,6 @@ async def upload_post(
     """Upload a new post with image to S3"""
     logger.info(f"Upload attempt by user: {current_user.username}")
     
-    # Debug: Check S3 configuration
-    logger.info(f"S3 bucket: {s3_handler.bucket_name}")
-    logger.info(f"S3 region: {s3_handler.region}")
-    
     # Validate file
     if not file.filename:
         logger.warning(f"Upload failed: No file provided by {current_user.username}")
@@ -251,6 +247,40 @@ async def get_all_posts(
         ))
     
     logger.info(f"Returned {len(response)} posts")
+    return response
+
+@router.get("/user/{user_id}", response_model=List[PostResponse])
+async def get_user_posts(
+    user_id: int,
+    db: Session = Depends(get_db)
+):
+    """Get all posts by a specific user"""
+    logger.info(f"Fetching posts for user: {user_id}")
+    
+    posts = db.query(Post).filter(Post.user_id == user_id).order_by(Post.created_at.desc()).all()
+    
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    response = []
+    for post in posts:
+        response.append(PostResponse(
+            id=post.id,
+            user_id=post.user_id,
+            image_url=post.image_url,
+            title=post.title,
+            caption=post.caption,
+            tags=post.tags,
+            views=post.views or 0,
+            downloads=post.downloads or 0,
+            created_at=post.created_at,
+            updated_at=post.updated_at,
+            username=user.username,
+            user_full_name=user.full_name
+        ))
+    
+    logger.info(f"Returned {len(response)} posts for user {user_id}")
     return response
 
 @router.get("/{post_id}", response_model=PostResponse)

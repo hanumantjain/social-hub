@@ -10,3 +10,6 @@ mangum
 email-validator
 boto3
 python-magic
+google-auth
+httpx
+requests

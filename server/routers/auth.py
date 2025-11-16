@@ -3,12 +3,16 @@ from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from database import get_db
 from models.user import User
-from schemas.auth import UserCreate, UserLogin, UserResponse, Token, TokenData, UserUpdate
+from schemas.auth import UserCreate, UserLogin, UserResponse, Token, TokenData, UserUpdate, GoogleOAuthRequest
 from passlib.context import CryptContext
 from jose import JWTError, jwt
 from datetime import datetime, timedelta
 from logger import logger
 import os
+from google.oauth2 import id_token
+from google.auth.transport import requests as google_requests
+import re
+import httpx
 
 router = APIRouter()
 
@@ -32,6 +36,27 @@ def get_password_hash(password):
 
 def get_user(db: Session, username: str):
     return db.query(User).filter(User.username == username).first()
+
+def get_user_by_email(db: Session, email: str):
+    return db.query(User).filter(User.email == email).first()
+
+def get_user_by_google_id(db: Session, google_id: str):
+    return db.query(User).filter(User.google_id == google_id).first()
+
+def generate_username_from_email(email: str, db: Session) -> str:
+    """Generate a unique username from email"""
+    base_username = email.split('@')[0].lower()
+    base_username = re.sub(r'[^a-z0-9]', '', base_username)  # Remove special chars
+    if not base_username:
+        base_username = "user"
+    
+    username = base_username
+    counter = 1
+    while get_user(db, username):
+        username = f"{base_username}{counter}"
+        counter += 1
+    
+    return username
 
 def authenticate_user(db: Session, username: str, password: str):
     user = get_user(db, username)
@@ -129,6 +154,128 @@ def login(user: UserLogin, db: Session = Depends(get_db)):
     
     logger.info(f"Login successful for username: {user.username}")
     return {"access_token": access_token, "token_type": "bearer"}
+
+@router.post("/google", response_model=Token)
+def google_oauth(oauth_data: GoogleOAuthRequest, db: Session = Depends(get_db)):
+    """Handle Google OAuth signin/signup"""
+    logger.info("Google OAuth attempt")
+    
+    try:
+        # The token can be either an ID token or an access token
+        # First, try to verify it as an ID token
+        GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
+        if not GOOGLE_CLIENT_ID:
+            logger.error("GOOGLE_CLIENT_ID environment variable not set")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Google OAuth not configured"
+            )
+        
+        idinfo = None
+        try:
+            # Try to verify as ID token
+            idinfo = id_token.verify_oauth2_token(
+                oauth_data.token, 
+                google_requests.Request(), 
+                GOOGLE_CLIENT_ID
+            )
+            google_id = idinfo['sub']
+            email = idinfo.get('email')
+            name = idinfo.get('name', '')
+            picture = idinfo.get('picture', '')
+        except ValueError:
+            # If ID token verification fails, try as access token
+            logger.info("Token is not an ID token, trying as access token")
+            with httpx.Client() as client:
+                userinfo_response = client.get(
+                    'https://www.googleapis.com/oauth2/v3/userinfo',
+                    headers={'Authorization': f'Bearer {oauth_data.token}'}
+                )
+                
+                if userinfo_response.status_code != 200:
+                    logger.warning(f"Failed to get user info: {userinfo_response.status_code}")
+                    raise HTTPException(
+                        status_code=status.HTTP_401_UNAUTHORIZED,
+                        detail="Invalid Google access token"
+                    )
+                
+                userinfo = userinfo_response.json()
+                google_id = userinfo.get('sub')
+                email = userinfo.get('email')
+                name = userinfo.get('name', '')
+                picture = userinfo.get('picture', '')
+        
+        if not email:
+            logger.warning("Google OAuth: No email in response")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Email not provided by Google"
+            )
+        
+        # Check if user exists by Google ID
+        user = get_user_by_google_id(db, google_id)
+        
+        if user:
+            # User exists, log them in
+            logger.info(f"Google OAuth: Existing user logged in - {user.username}")
+        else:
+            # Check if user exists by email (for account linking scenario)
+            existing_user = get_user_by_email(db, email)
+            
+            if existing_user:
+                # Link Google account to existing user
+                if existing_user.google_id:
+                    logger.warning(f"Google OAuth: Email {email} already linked to another Google account")
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail="Email already registered with a different Google account"
+                    )
+                
+                existing_user.google_id = google_id
+                # Update name if not set or different
+                if not existing_user.full_name or existing_user.full_name != name:
+                    existing_user.full_name = name
+                user = existing_user
+                db.commit()
+                db.refresh(user)
+                logger.info(f"Google OAuth: Linked Google account to existing user - {user.username}")
+            else:
+                # Create new user
+                username = generate_username_from_email(email, db)
+                user = User(
+                    google_id=google_id,
+                    email=email,
+                    full_name=name,
+                    username=username,
+                    password=None,  # OAuth users don't have passwords
+                    bio=None
+                )
+                db.add(user)
+                db.commit()
+                db.refresh(user)
+                logger.info(f"Google OAuth: New user created - {user.username} (ID: {user.id})")
+        
+        # Generate JWT token
+        access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+        access_token = create_access_token(
+            data={"sub": user.username}, expires_delta=access_token_expires
+        )
+        
+        return {"access_token": access_token, "token_type": "bearer"}
+        
+    except ValueError as e:
+        # Invalid token
+        logger.warning(f"Google OAuth: Invalid token - {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid Google token"
+        )
+    except Exception as e:
+        logger.error(f"Google OAuth error: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="OAuth authentication failed"
+        )
 
 @router.get("/me", response_model=UserResponse)
 def read_users_me(current_user: User = Depends(get_current_user)):

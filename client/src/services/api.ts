@@ -127,6 +127,24 @@ export const authAPI = {
 
     return response.json();
   },
+
+  // Google OAuth login/signup
+  async googleAuth(googleToken: string): Promise<AuthResponse> {
+    const response = await fetch(`${API_BASE_URL}/auth/google`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ token: googleToken }),
+    });
+
+    if (!response.ok) {
+      const error: ApiError = await response.json();
+      throw new Error(error.detail || 'Google authentication failed');
+    }
+
+    return response.json();
+  },
 };
 
 // Posts API

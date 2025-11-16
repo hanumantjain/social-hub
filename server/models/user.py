@@ -10,7 +10,8 @@ class User(Base):
     full_name = Column(String, index=True)
     username = Column(String, unique=True, index=True)
     email = Column(String, unique=True, index=True)
-    password = Column(String)
+    password = Column(String, nullable=True)  # Nullable for OAuth users
+    google_id = Column(String, unique=True, index=True, nullable=True)  # For Google OAuth
     bio = Column(String, nullable=True)
     created_at = Column(DateTime, default=datetime.now)
     updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)

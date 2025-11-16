@@ -18,6 +18,10 @@ class UserLogin(BaseModel):
     username: str
     password: str
 
+# Google OAuth Schema
+class GoogleOAuthRequest(BaseModel):
+    token: str
+
 # User Response Schema (what we return to client)
 class UserResponse(UserBase):
     id: int
