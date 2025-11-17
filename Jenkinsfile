@@ -40,7 +40,7 @@ pipeline {
                         export VITE_API_URL="https://rx2oeokm48.execute-api.us-east-1.amazonaws.com/Prod"
                         
                         echo "VITE_API_URL is set: ${VITE_API_URL}"
-                        echo "VITE_GOOGLE_CLIENT_ID is set (length: ${#GOOGLE_CLIENT_ID}): ${GOOGLE_CLIENT_ID:0:20}..."
+                        echo "VITE_GOOGLE_CLIENT_ID is set: ${VITE_GOOGLE_CLIENT_ID}"
                         
                         npm install
                         npm run build
