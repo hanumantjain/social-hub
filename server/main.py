@@ -20,7 +20,8 @@ load_dotenv()
 app = FastAPI(
     title="Social Hub API",
     description="API for Social Hub application",
-    version="1.0.0"
+    version="1.0.0",
+    redirect_slashes=False  # Disable automatic redirects to avoid CORS issues
 )
 
 @app.on_event("startup")
@@ -131,22 +132,12 @@ async def general_exception_handler(request: Request, exc: Exception):
     )
     return add_cors_headers(response, origin)
 
-# Add middleware to normalize paths and ensure CORS headers (must be after CORS middleware)
+# Add middleware to ensure CORS headers on all responses (must be after CORS middleware)
 @app.middleware("http")
-async def normalize_path_and_cors(request: Request, call_next):
-    """Normalize paths (remove trailing slashes) and ensure CORS headers on all responses"""
+async def ensure_cors_headers(request: Request, call_next):
+    """Ensure CORS headers are added to all responses"""
     # Get origin from request early
     origin = request.headers.get("origin", "")
-    
-    # Normalize path - remove trailing slash (except for root) by rewriting the request
-    # Don't redirect, as redirects lose CORS headers. Instead, rewrite the path in the request.
-    path = request.url.path
-    if path != "/" and path.endswith("/"):
-        # Rewrite request URL to remove trailing slash (internal rewrite, no redirect)
-        normalized_path = path.rstrip("/")
-        request.scope["path"] = normalized_path
-        request.scope["raw_path"] = normalized_path.encode()
-        path = normalized_path  # Update path for logging
     
     # Handle OPTIONS preflight requests directly
     if request.method == "OPTIONS":
@@ -154,6 +145,7 @@ async def normalize_path_and_cors(request: Request, call_next):
         return add_cors_headers(response, origin)
     
     # Log the path for debugging
+    path = request.url.path
     logger.debug(f"Request path: {path}, Origin: {origin}, Method: {request.method}")
     
     try:
