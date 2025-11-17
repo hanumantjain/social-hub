@@ -20,7 +20,7 @@ load_dotenv()
 app = FastAPI(
     title="Social Hub API",
     description="API for Social Hub application",
-    version="1.0.0",
+    version="1.0.1",  # Updated for redeployment
     redirect_slashes=False  # Disable automatic redirects to avoid CORS issues
 )
 
