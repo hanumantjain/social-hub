@@ -103,10 +103,10 @@ const Feed = () => {
       <div className="px-8 sm:px-12 lg:px-16 xl:px-20 py-8">
         <div className="columns-1 sm:columns-2 lg:columns-3 xl:columns-4 gap-4">
           {posts.map((post) => (
-            <div key={post.id} className="break-inside-avoid mb-4 group cursor-pointer">
-              <Link to={`/post/${post.id}`} state={{ post }} className="relative block bg-white rounded-lg overflow-hidden shadow-sm hover:shadow-lg transition-shadow">
+            <div key={post.id} className="break-inside-avoid mb-4 group cursor-pointer relative group-hover:z-20">
+              <Link to={`/post/${post.id}`} state={{ post }} className="relative block bg-white rounded-lg overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300 ease-in-out group-hover:scale-102">
                 {/* Image */}
-                <div className="relative">
+                <div className="relative overflow-hidden">
                   <img
                     src={post.image_url}
                     alt={post.caption || "Post"}
@@ -119,6 +119,8 @@ const Feed = () => {
                       target.src = "https://via.placeholder.com/600x400?text=Image+Not+Found";
                     }}
                   />
+                  {/* Gray overlay on hover */}
+                  <div className="absolute inset-0 bg-gray-900/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300 ease-in-out z-0"></div>
                   {/* Download icon button */}
                   <button
                     onClick={(e) => {
@@ -126,7 +128,7 @@ const Feed = () => {
                       e.preventDefault();
                       handleDownload(post.image_url, post.id);
                     }}
-                    className="absolute top-2 right-2 p-2 bg-black/50 hover:bg-black/70 rounded-full transition-all opacity-0 group-hover:opacity-100 z-10"
+                    className="absolute top-2 right-2 p-2 bg-black/50 hover:bg-black/70 rounded-full transition-all opacity-0 group-hover:opacity-100 z-20"
                     aria-label="Download image"
                     type="button"
                   >
@@ -145,6 +147,12 @@ const Feed = () => {
                       />
                     </svg>
                   </button>
+                  {/* Title overlay */}
+                  {post.title && (
+                    <div className="absolute bottom-0 left-0 right-0 px-3 py-2 transition-all opacity-0 group-hover:opacity-100 z-20">
+                      <p className="text-white text-sm font-medium line-clamp-2 drop-shadow-lg">{post.title}</p>
+                    </div>
+                  )}
                 </div>
               </Link>
             </div>
