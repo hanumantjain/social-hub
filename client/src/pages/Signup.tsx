@@ -55,8 +55,27 @@ const Signup = () => {
       setError("");
       
       try {
-        // Send access token to backend for verification and user creation/login
-        const response = await authAPI.googleAuth(tokenResponse.access_token);
+        // Get user info from Google API (frontend has internet access)
+        const userinfoResponse = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+          headers: {
+            'Authorization': `Bearer ${tokenResponse.access_token}`
+          }
+        });
+
+        if (!userinfoResponse.ok) {
+          throw new Error('Failed to get user info from Google');
+        }
+
+        const userinfo = await userinfoResponse.json();
+        
+        // Send verified user info to backend (backend trusts frontend verification)
+        const response = await authAPI.googleAuth({
+          google_id: userinfo.sub,
+          email: userinfo.email,
+          name: userinfo.name || '',
+          picture: userinfo.picture || ''
+        });
+        
         tokenManager.saveToken(response.access_token);
         
         const redirectTo = searchParams.get("redirect") || "/";

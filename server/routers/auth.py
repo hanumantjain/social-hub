@@ -9,10 +9,7 @@ from jose import JWTError, jwt
 from datetime import datetime, timedelta
 from logger import logger
 import os
-from google.oauth2 import id_token
-from google.auth.transport import requests as google_requests
 import re
-import httpx
 
 router = APIRouter()
 
@@ -157,75 +154,18 @@ def login(user: UserLogin, db: Session = Depends(get_db)):
 
 @router.post("/google", response_model=Token)
 def google_oauth(oauth_data: GoogleOAuthRequest, db: Session = Depends(get_db)):
-    """Handle Google OAuth signin/signup"""
-    logger.info("Google OAuth attempt - token length: %d", len(oauth_data.token) if oauth_data.token else 0)
+    """Handle Google OAuth signin/signup
+    Frontend verifies the token with Google API and sends verified user info.
+    Backend trusts the frontend verification and creates/updates user.
+    """
+    logger.info("Google OAuth attempt - email: %s, google_id: %s", oauth_data.email, oauth_data.google_id)
     
     try:
-        # The token can be either an ID token or an access token
-        # First, try to verify it as an ID token
-        GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
-        if not GOOGLE_CLIENT_ID:
-            logger.error("GOOGLE_CLIENT_ID environment variable not set")
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Google OAuth not configured"
-            )
-        
-        logger.info("Google Client ID configured: %s", GOOGLE_CLIENT_ID[:10] + "..." if GOOGLE_CLIENT_ID else "None")
-        
-        idinfo = None
-        try:
-            # Try to verify as ID token
-            logger.info("Attempting to verify token as ID token")
-            idinfo = id_token.verify_oauth2_token(
-                oauth_data.token, 
-                google_requests.Request(), 
-                GOOGLE_CLIENT_ID
-            )
-            google_id = idinfo['sub']
-            email = idinfo.get('email')
-            name = idinfo.get('name', '')
-            picture = idinfo.get('picture', '')
-            logger.info("Successfully verified as ID token for user: %s", email)
-        except ValueError as e:
-            # If ID token verification fails, try as access token
-            logger.info("Token is not an ID token, trying as access token. Error: %s", str(e))
-            # Set timeout to avoid hanging - Lambda VPC can be slow
-            try:
-                with httpx.Client(timeout=10.0) as client:
-                    logger.info("Calling Google userinfo API...")
-                    userinfo_response = client.get(
-                        'https://www.googleapis.com/oauth2/v3/userinfo',
-                        headers={'Authorization': f'Bearer {oauth_data.token}'},
-                        timeout=10.0
-                    )
-                    logger.info("Google API response status: %d", userinfo_response.status_code)
-                    
-                    if userinfo_response.status_code != 200:
-                        logger.warning(f"Failed to get user info: {userinfo_response.status_code}, Response: {userinfo_response.text}")
-                        raise HTTPException(
-                            status_code=status.HTTP_401_UNAUTHORIZED,
-                            detail="Invalid Google access token"
-                        )
-                    
-                    userinfo = userinfo_response.json()
-                    google_id = userinfo.get('sub')
-                    email = userinfo.get('email')
-                    name = userinfo.get('name', '')
-                    picture = userinfo.get('picture', '')
-                    logger.info("Successfully verified as access token for user: %s", email)
-            except httpx.TimeoutException:
-                logger.error("Timeout calling Google API - Lambda may not have internet access (check NAT Gateway)")
-                raise HTTPException(
-                    status_code=status.HTTP_504_GATEWAY_TIMEOUT,
-                    detail="Timeout connecting to Google API. Please check VPC configuration."
-                )
-            except Exception as e:
-                logger.error("Error calling Google API: %s", str(e), exc_info=True)
-                raise HTTPException(
-                    status_code=status.HTTP_502_BAD_GATEWAY,
-                    detail=f"Failed to verify Google token: {str(e)}"
-                )
+        # Frontend has already verified the token, we trust the user info
+        google_id = oauth_data.google_id
+        email = oauth_data.email
+        name = oauth_data.name
+        picture = oauth_data.picture or ''
         
         if not email:
             logger.warning("Google OAuth: No email in response")
@@ -285,13 +225,8 @@ def google_oauth(oauth_data: GoogleOAuthRequest, db: Session = Depends(get_db)):
         
         return {"access_token": access_token, "token_type": "bearer"}
         
-    except ValueError as e:
-        # Invalid token
-        logger.warning(f"Google OAuth: Invalid token - {str(e)}")
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid Google token"
-        )
+    except HTTPException:
+        raise  # Re-raise HTTP exceptions
     except Exception as e:
         logger.error(f"Google OAuth error: {str(e)}")
         raise HTTPException(

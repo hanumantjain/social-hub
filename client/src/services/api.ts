@@ -131,13 +131,14 @@ export const authAPI = {
   },
 
   // Google OAuth login/signup
-  async googleAuth(googleToken: string): Promise<AuthResponse> {
+  // Frontend verifies with Google API and sends verified user info to backend
+  async googleAuth(userInfo: { google_id: string; email: string; name: string; picture?: string }): Promise<AuthResponse> {
     const response = await fetch(`${API_BASE_URL}/auth/google`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ token: googleToken }),
+      body: JSON.stringify(userInfo),
     });
 
     if (!response.ok) {

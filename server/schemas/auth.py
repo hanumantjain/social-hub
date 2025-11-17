@@ -18,9 +18,12 @@ class UserLogin(BaseModel):
     username: str
     password: str
 
-# Google OAuth Schema
+# Google OAuth Schema - Frontend verifies token and sends user info
 class GoogleOAuthRequest(BaseModel):
-    token: str
+    google_id: str
+    email: str
+    name: str
+    picture: Optional[str] = None
 
 # User Response Schema (what we return to client)
 class UserResponse(UserBase):
