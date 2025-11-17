@@ -118,10 +118,10 @@ const Signup = () => {
         </Link>
       </div>
       
-      <div className="flex min-h-[calc(100vh-4rem)] items-center justify-center py-4 sm:py-8">
-        <div className="w-full max-w-md px-4 sm:px-6">
+      <div className="flex min-h-[calc(100vh-4rem)] items-center justify-center py-8 sm:py-16">
+        <div className="w-full max-w-md px-4 sm:px-6 pb-10 sm:pb-16">
           {/* Header */}
-          <div className="text-center my-4 sm:my-8">
+          <div className="text-center mt-16 sm:mt-24 mb-6">
             <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-gray-900 mb-2">
               Create Account
             </h1>
