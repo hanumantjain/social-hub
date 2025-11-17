@@ -1,9 +1,7 @@
 
-// Normalize API URL - remove /Prod or /Stage prefix if present
-let rawApiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
-// Remove any stage prefix like /Prod, /Stage, /Dev etc and trailing slashes
-rawApiUrl = rawApiUrl.replace(/\/\w+$/, '').replace(/\/+$/, '');
-const API_BASE_URL = rawApiUrl;
+// Get API base URL - for API Gateway, keep the stage prefix (e.g., /Prod)
+// API Gateway will strip the stage prefix before sending to Lambda
+const API_BASE_URL = (import.meta.env.VITE_API_URL || 'http://localhost:8000').replace(/\/+$/, '');
 
 // Types
 export interface User {
@@ -159,7 +157,7 @@ export const postsAPI = {
     key: string;
     public_url: string;
   }> {
-    const response = await authenticatedFetch(`${API_BASE_URL}/posts/presigned-url`, {
+    const response = await authenticatedFetch(`${API_BASE_URL}/api/posts/presigned-url`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -192,7 +190,7 @@ export const postsAPI = {
 
   // Confirm upload and create post record
   async confirmUpload(imageUrl: string, caption: string, title?: string, tags?: string): Promise<Post> {
-    const response = await authenticatedFetch(`${API_BASE_URL}/posts/confirm-upload`, {
+    const response = await authenticatedFetch(`${API_BASE_URL}/api/posts/confirm-upload`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -246,7 +244,7 @@ export const postsAPI = {
 
   // Delete post
   async deletePost(postId: number): Promise<void> {
-    const response = await authenticatedFetch(`${API_BASE_URL}/posts/${postId}`, {
+    const response = await authenticatedFetch(`${API_BASE_URL}/api/posts/${postId}`, {
       method: 'DELETE',
     });
 
