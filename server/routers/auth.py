@@ -186,10 +186,12 @@ def google_oauth(oauth_data: GoogleOAuthRequest, db: Session = Depends(get_db)):
         except ValueError:
             # If ID token verification fails, try as access token
             logger.info("Token is not an ID token, trying as access token")
-            with httpx.Client() as client:
+            # Set timeout to avoid hanging - Lambda VPC can be slow
+            with httpx.Client(timeout=10.0) as client:
                 userinfo_response = client.get(
                     'https://www.googleapis.com/oauth2/v3/userinfo',
-                    headers={'Authorization': f'Bearer {oauth_data.token}'}
+                    headers={'Authorization': f'Bearer {oauth_data.token}'},
+                    timeout=10.0
                 )
                 
                 if userinfo_response.status_code != 200:
