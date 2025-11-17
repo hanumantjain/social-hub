@@ -26,6 +26,10 @@ pipeline {
                 dir('client') {
                     sh '''
                         echo "Building React frontend..."
+                        # Get Google Client ID from SSM Parameter Store
+                        export VITE_GOOGLE_CLIENT_ID=$(aws ssm get-parameter --name "/socialapp/GOOGLE_CLIENT_ID" --region ${AWS_DEFAULT_REGION} --query "Parameter.Value" --output text 2>/dev/null || echo "")
+                        export VITE_API_URL=https://rx2oeokm48.execute-api.us-east-1.amazonaws.com/Prod
+                        echo "VITE_GOOGLE_CLIENT_ID is set: ${VITE_GOOGLE_CLIENT_ID:+yes}"
                         npm install
                         npm run build
                     '''

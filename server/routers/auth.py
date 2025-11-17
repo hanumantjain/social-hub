@@ -158,7 +158,7 @@ def login(user: UserLogin, db: Session = Depends(get_db)):
 @router.post("/google", response_model=Token)
 def google_oauth(oauth_data: GoogleOAuthRequest, db: Session = Depends(get_db)):
     """Handle Google OAuth signin/signup"""
-    logger.info("Google OAuth attempt")
+    logger.info("Google OAuth attempt - token length: %d", len(oauth_data.token) if oauth_data.token else 0)
     
     try:
         # The token can be either an ID token or an access token
@@ -171,9 +171,12 @@ def google_oauth(oauth_data: GoogleOAuthRequest, db: Session = Depends(get_db)):
                 detail="Google OAuth not configured"
             )
         
+        logger.info("Google Client ID configured: %s", GOOGLE_CLIENT_ID[:10] + "..." if GOOGLE_CLIENT_ID else "None")
+        
         idinfo = None
         try:
             # Try to verify as ID token
+            logger.info("Attempting to verify token as ID token")
             idinfo = id_token.verify_oauth2_token(
                 oauth_data.token, 
                 google_requests.Request(), 
@@ -183,29 +186,46 @@ def google_oauth(oauth_data: GoogleOAuthRequest, db: Session = Depends(get_db)):
             email = idinfo.get('email')
             name = idinfo.get('name', '')
             picture = idinfo.get('picture', '')
-        except ValueError:
+            logger.info("Successfully verified as ID token for user: %s", email)
+        except ValueError as e:
             # If ID token verification fails, try as access token
-            logger.info("Token is not an ID token, trying as access token")
+            logger.info("Token is not an ID token, trying as access token. Error: %s", str(e))
             # Set timeout to avoid hanging - Lambda VPC can be slow
-            with httpx.Client(timeout=10.0) as client:
-                userinfo_response = client.get(
-                    'https://www.googleapis.com/oauth2/v3/userinfo',
-                    headers={'Authorization': f'Bearer {oauth_data.token}'},
-                    timeout=10.0
-                )
-                
-                if userinfo_response.status_code != 200:
-                    logger.warning(f"Failed to get user info: {userinfo_response.status_code}")
-                    raise HTTPException(
-                        status_code=status.HTTP_401_UNAUTHORIZED,
-                        detail="Invalid Google access token"
+            try:
+                with httpx.Client(timeout=10.0) as client:
+                    logger.info("Calling Google userinfo API...")
+                    userinfo_response = client.get(
+                        'https://www.googleapis.com/oauth2/v3/userinfo',
+                        headers={'Authorization': f'Bearer {oauth_data.token}'},
+                        timeout=10.0
                     )
-                
-                userinfo = userinfo_response.json()
-                google_id = userinfo.get('sub')
-                email = userinfo.get('email')
-                name = userinfo.get('name', '')
-                picture = userinfo.get('picture', '')
+                    logger.info("Google API response status: %d", userinfo_response.status_code)
+                    
+                    if userinfo_response.status_code != 200:
+                        logger.warning(f"Failed to get user info: {userinfo_response.status_code}, Response: {userinfo_response.text}")
+                        raise HTTPException(
+                            status_code=status.HTTP_401_UNAUTHORIZED,
+                            detail="Invalid Google access token"
+                        )
+                    
+                    userinfo = userinfo_response.json()
+                    google_id = userinfo.get('sub')
+                    email = userinfo.get('email')
+                    name = userinfo.get('name', '')
+                    picture = userinfo.get('picture', '')
+                    logger.info("Successfully verified as access token for user: %s", email)
+            except httpx.TimeoutException:
+                logger.error("Timeout calling Google API - Lambda may not have internet access (check NAT Gateway)")
+                raise HTTPException(
+                    status_code=status.HTTP_504_GATEWAY_TIMEOUT,
+                    detail="Timeout connecting to Google API. Please check VPC configuration."
+                )
+            except Exception as e:
+                logger.error("Error calling Google API: %s", str(e), exc_info=True)
+                raise HTTPException(
+                    status_code=status.HTTP_502_BAD_GATEWAY,
+                    detail=f"Failed to verify Google token: {str(e)}"
+                )
         
         if not email:
             logger.warning("Google OAuth: No email in response")
