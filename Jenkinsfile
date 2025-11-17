@@ -83,6 +83,18 @@ pipeline {
                 withAWS(credentials: 'aws-credentials-id', region: "${AWS_DEFAULT_REGION}") {
                     dir('server') {
                         sh '''
+                        echo "Checking if CloudFormation stack exists..."
+                        if aws cloudformation describe-stacks --stack-name ${LAMBDA_FUNCTION_NAME} --region ${AWS_DEFAULT_REGION} 2>/dev/null; then
+                            echo "Stack exists. Checking if it's in a failed state..."
+                            STACK_STATUS=$(aws cloudformation describe-stacks --stack-name ${LAMBDA_FUNCTION_NAME} --region ${AWS_DEFAULT_REGION} --query 'Stacks[0].StackStatus' --output text)
+                            if [[ "$STACK_STATUS" == *"ROLLBACK"* ]] || [[ "$STACK_STATUS" == *"FAILED"* ]]; then
+                                echo "Stack is in failed state. Deleting stack before redeploy..."
+                                aws cloudformation delete-stack --stack-name ${LAMBDA_FUNCTION_NAME} --region ${AWS_DEFAULT_REGION}
+                                echo "Waiting for stack deletion to complete..."
+                                aws cloudformation wait stack-delete-complete --stack-name ${LAMBDA_FUNCTION_NAME} --region ${AWS_DEFAULT_REGION} || true
+                            fi
+                        fi
+                        
                         echo "Deploying FastAPI backend to Lambda..."
                         sam deploy \
                             --stack-name ${LAMBDA_FUNCTION_NAME} \
