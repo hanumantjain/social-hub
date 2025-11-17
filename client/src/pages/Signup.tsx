@@ -93,10 +93,10 @@ const Signup = () => {
   });
 
   return (
-    <div className="h-screen overflow-hidden relative">
+    <div className="min-h-screen relative">
       <Navbar />
       {/* Back Button - Top Left Corner */}
-      <div className="absolute top-22 left-6 z-20">
+      <div className="absolute top-22 left-4 sm:left-6 z-20">
         <Link
           to="/"
           className="inline-flex items-center text-gray-600 hover:text-gray-900 transition-colors"
@@ -118,10 +118,10 @@ const Signup = () => {
         </Link>
       </div>
       
-      <div className="flex h-[calc(100vh-4rem)] items-center justify-center">
+      <div className="flex min-h-[calc(100vh-4rem)] items-center justify-center py-4 sm:py-8">
         <div className="w-full max-w-md px-4 sm:px-6">
           {/* Header */}
-          <div className="text-center my-1 sm:my-4">
+          <div className="text-center my-4 sm:my-8">
             <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-gray-900 mb-2">
               Create Account
             </h1>

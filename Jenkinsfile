@@ -26,31 +26,12 @@ pipeline {
                 withAWS(credentials: 'aws-credentials-id', region: "${AWS_DEFAULT_REGION}") {
                     dir('client') {
                         sh '''
-                        echo "Building React frontend..."
-                        # Get Google Client ID from SSM Parameter Store
-                        GOOGLE_CLIENT_ID=$(aws ssm get-parameter --name "/socialapp/GOOGLE_CLIENT_ID" --region ${AWS_DEFAULT_REGION} --query "Parameter.Value" --output text 2>/dev/null || echo "")
-                        
-                        if [ -z "$GOOGLE_CLIENT_ID" ]; then
-                            echo "ERROR: Failed to retrieve GOOGLE_CLIENT_ID from SSM Parameter Store"
-                            exit 1
-                        fi
-                        
-                        # Export environment variables for Vite build
-                        export VITE_GOOGLE_CLIENT_ID="$GOOGLE_CLIENT_ID"
+                        # Get Google Client ID from SSM and set environment variables for Vite build
+                        export VITE_GOOGLE_CLIENT_ID=$(aws ssm get-parameter --name "/socialapp/GOOGLE_CLIENT_ID" --region ${AWS_DEFAULT_REGION} --query "Parameter.Value" --output text)
                         export VITE_API_URL="https://rx2oeokm48.execute-api.us-east-1.amazonaws.com/Prod"
-                        
-                        echo "VITE_API_URL is set: ${VITE_API_URL}"
-                        echo "VITE_GOOGLE_CLIENT_ID is set: ${VITE_GOOGLE_CLIENT_ID}"
                         
                         npm install
                         npm run build
-                        
-                        # Verify the Google Client ID was included in the build
-                        if grep -r "VITE_GOOGLE_CLIENT_ID" dist/ > /dev/null 2>&1; then
-                            echo "WARNING: VITE_GOOGLE_CLIENT_ID found as literal string in build - env var may not be set correctly"
-                        else
-                            echo "SUCCESS: Google Client ID appears to be embedded in build"
-                        fi
                         '''
                     }
                 }
