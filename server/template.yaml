@@ -40,3 +40,8 @@ Resources:
           Properties:
             Path: /{proxy+}
             Method: ANY
+        ApiGatewayRoot:
+          Type: Api
+          Properties:
+            Path: /
+            Method: ANY

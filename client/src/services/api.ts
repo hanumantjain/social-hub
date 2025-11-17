@@ -208,7 +208,9 @@ export const postsAPI = {
 
   // Get all posts (feed)
   async getAllPosts(): Promise<Post[]> {
-    const response = await fetch(`${API_BASE_URL}/api/posts`);
+    // Ensure no trailing slash to avoid API Gateway redirects
+    const url = `${API_BASE_URL}/api/posts`.replace(/\/+$/, '');
+    const response = await fetch(url);
 
     if (!response.ok) {
       const error: ApiError = await response.json();

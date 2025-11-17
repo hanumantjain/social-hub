@@ -93,8 +93,8 @@ def add_cors_headers(response, origin: str = None):
     # Always set these headers
     if "Access-Control-Allow-Origin" in response.headers:
         response.headers["Access-Control-Allow-Credentials"] = "true"
-        response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS, PATCH"
-        response.headers["Access-Control-Allow-Headers"] = "*"
+    response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS, PATCH"
+    response.headers["Access-Control-Allow-Headers"] = "*"
         response.headers["Access-Control-Max-Age"] = "3600"
     
     return response
@@ -131,12 +131,22 @@ async def general_exception_handler(request: Request, exc: Exception):
     )
     return add_cors_headers(response, origin)
 
-# Add middleware to ensure CORS headers on all responses (must be after CORS middleware)
+# Add middleware to normalize paths and ensure CORS headers (must be after CORS middleware)
 @app.middleware("http")
-async def ensure_cors_headers(request: Request, call_next):
-    """Ensure CORS headers are added to all responses, including redirects"""
+async def normalize_path_and_cors(request: Request, call_next):
+    """Normalize paths (remove trailing slashes) and ensure CORS headers on all responses"""
     # Get origin from request early
     origin = request.headers.get("origin", "")
+    
+    # Normalize path - remove trailing slash (except for root) by rewriting the request
+    # Don't redirect, as redirects lose CORS headers. Instead, rewrite the path in the request.
+    path = request.url.path
+    if path != "/" and path.endswith("/"):
+        # Rewrite request URL to remove trailing slash (internal rewrite, no redirect)
+        normalized_path = path.rstrip("/")
+        request.scope["path"] = normalized_path
+        request.scope["raw_path"] = normalized_path.encode()
+        path = normalized_path  # Update path for logging
     
     # Handle OPTIONS preflight requests directly
     if request.method == "OPTIONS":
@@ -144,16 +154,22 @@ async def ensure_cors_headers(request: Request, call_next):
         return add_cors_headers(response, origin)
     
     # Log the path for debugging
-    path = request.url.path
-    logger.debug(f"Request path: {path}, Origin: {origin}")
+    logger.debug(f"Request path: {path}, Origin: {origin}, Method: {request.method}")
     
-    response = await call_next(request)
+    try:
+        response = await call_next(request)
+    except Exception as e:
+        logger.error(f"Error processing request: {str(e)}", exc_info=True)
+        response = JSONResponse(
+            status_code=500,
+            content={"detail": "Internal server error"}
+        )
     
     # Force add CORS headers to ALL responses (even if already present, ensures they're correct)
     add_cors_headers(response, origin)
     
     # Log CORS headers for debugging
-    logger.debug(f"Response headers: Access-Control-Allow-Origin = {response.headers.get('Access-Control-Allow-Origin')}")
+    logger.debug(f"Response status: {response.status_code}, CORS Origin: {response.headers.get('Access-Control-Allow-Origin')}")
     
     return response
 
