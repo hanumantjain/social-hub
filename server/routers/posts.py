@@ -216,6 +216,7 @@ async def upload_post(
         logger.error(f"Traceback: {traceback.format_exc()}")
         raise HTTPException(status_code=500, detail=f"Upload failed: {str(e)}")
 
+@router.get("", response_model=List[PostResponse])
 @router.get("/", response_model=List[PostResponse])
 async def get_all_posts(
     skip: int = 0,
