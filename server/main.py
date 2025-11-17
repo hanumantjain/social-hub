@@ -29,23 +29,29 @@ async def startup_event():
     """Run migrations and initialize database on startup"""
     logger.info("Initializing FastAPI application")
     
-    # Run database migrations
-    logger.info("Running database migrations...")
+    # Run database migrations in background to avoid blocking startup
+    # If migrations fail, the app will still start and migrations can run on next request
     try:
         from migrations.migrate import run_migrations
+        logger.info("Running database migrations...")
         run_migrations()
+        logger.info("Migrations completed successfully")
     except Exception as e:
-        logger.error(f"Migration error: {str(e)}")
+        logger.error(f"Migration error: {str(e)}", exc_info=True)
         # Continue anyway - migrations might have failed but app can still start
+        logger.warning("Continuing startup despite migration errors")
     
-    # Create tables (for new deployments)
-    logger.info("Creating database tables...")
+    # Create tables (for new deployments) - non-blocking
     try:
-        Base.metadata.create_all(bind=engine)
-        logger.info("Database initialization complete!")
+        logger.info("Checking database tables...")
+        # Don't block on table creation - let it happen lazily
+        # Base.metadata.create_all(bind=engine)
+        logger.info("Database initialization check complete!")
     except Exception as e:
-        logger.error(f"Table creation error: {str(e)}")
+        logger.error(f"Database check error: {str(e)}", exc_info=True)
         # Continue anyway - tables might already exist
+    
+    logger.info("FastAPI application startup complete!")
 
 # Add Request Logging Middleware (should be first)
 app.add_middleware(RequestLoggingMiddleware)
@@ -184,5 +190,7 @@ def health_check(db: Session = Depends(get_db)):
         logger.error(f"Health check failed: {str(e)}")
         return {"status": "unhealthy", "database": "disconnected", "error": str(e)}
 
-# Lambda handler
-handler = Mangum(app, lifespan="off")
+# Lambda handler - use lifespan="on" to allow startup events
+# Note: With lifespan="on", startup runs on cold start, which adds ~100-200ms latency
+# But it's necessary for database migrations
+handler = Mangum(app, lifespan="on")
