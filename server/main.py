@@ -70,32 +70,32 @@ app.add_middleware(
 
 # Helper function to add CORS headers to any response
 def add_cors_headers(response, origin: str = None):
-    """Add CORS headers to response - always adds headers regardless of origin"""
-    # Always check if origin is in allowed list (case-insensitive)
-    origin_lower = origin.lower() if origin else ""
+    """Add CORS headers to response"""
+    # Check if origin is in allowed list (case-insensitive)
+    origin_lower = (origin or "").lower().strip()
     allowed_origin = None
     
     for allowed in cors_origins:
-        if allowed.lower() == origin_lower:
+        if allowed.lower().strip() == origin_lower:
             allowed_origin = allowed
             break
     
-    # Set the origin - use matched origin or first in list
+    # Set the origin - must match exactly or use first allowed
     if allowed_origin:
         response.headers["Access-Control-Allow-Origin"] = allowed_origin
-    elif cors_origins:
-        # If origin doesn't match but we have allowed origins, use first one
-        # This handles cases where origin might be slightly different
+    elif cors_origins and origin_lower:
+        # If origin provided but not in list, use first allowed (strict)
         response.headers["Access-Control-Allow-Origin"] = cors_origins[0]
-    else:
-        # Fallback - should not happen in production
-        response.headers["Access-Control-Allow-Origin"] = origin if origin else "*"
+    elif cors_origins:
+        # No origin in request, use first allowed
+        response.headers["Access-Control-Allow-Origin"] = cors_origins[0]
     
     # Always set these headers
-    response.headers["Access-Control-Allow-Credentials"] = "true"
-    response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS, PATCH"
-    response.headers["Access-Control-Allow-Headers"] = "*"
-    response.headers["Access-Control-Max-Age"] = "3600"
+    if "Access-Control-Allow-Origin" in response.headers:
+        response.headers["Access-Control-Allow-Credentials"] = "true"
+        response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS, PATCH"
+        response.headers["Access-Control-Allow-Headers"] = "*"
+        response.headers["Access-Control-Max-Age"] = "3600"
     
     return response
 

@@ -4,12 +4,6 @@ Description: "Social FastAPI Lamda Template"
 
 Globals:
   Api:
-    Cors:
-      AllowOrigin: "'https://galleryai.hanumantjain.tech'"
-      AllowHeaders: "'*'"
-      AllowMethods: "'GET,POST,PUT,DELETE,OPTIONS,PATCH'"
-      AllowCredentials: true
-      MaxAge: "'3600'"
     BinaryMediaTypes:
       - '*/*'
     EndpointConfiguration:

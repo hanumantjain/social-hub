@@ -1,5 +1,9 @@
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+// Normalize API URL - remove /Prod or /Stage prefix if present
+let rawApiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+// Remove any stage prefix like /Prod, /Stage, /Dev etc and trailing slashes
+rawApiUrl = rawApiUrl.replace(/\/\w+$/, '').replace(/\/+$/, '');
+const API_BASE_URL = rawApiUrl;
 
 // Types
 export interface User {
