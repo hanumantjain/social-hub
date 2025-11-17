@@ -17,7 +17,7 @@ pipeline {
         stage('Checkout') {
             steps {
                 echo 'Checking out source code'
-                git branch: 'main', url: 'https://github.com/hanumantjain/social-hub.git'
+                git branch: 'main', url: 'https://github.com/hanumantjain/galleryai.git'
             }
         }
                 
