@@ -97,11 +97,11 @@ def add_cors_headers(response, origin: str = None):
         # No origin in request, use first allowed
         response.headers["Access-Control-Allow-Origin"] = cors_origins[0]
     
-    # Always set these headers
+    # Always set these headers if origin was set
     if "Access-Control-Allow-Origin" in response.headers:
         response.headers["Access-Control-Allow-Credentials"] = "true"
-    response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS, PATCH"
-    response.headers["Access-Control-Allow-Headers"] = "*"
+        response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS, PATCH"
+        response.headers["Access-Control-Allow-Headers"] = "*"
         response.headers["Access-Control-Max-Age"] = "3600"
     
     return response
