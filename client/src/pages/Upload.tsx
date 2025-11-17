@@ -113,7 +113,7 @@ const Upload = () => {
         presignedData.public_url,
         description.trim(),
         title.trim(),
-        tagsArray.length > 0 ? tagsArray.join(',') : undefined
+        tagsArray.length > 0 ? tagsArray : undefined
       );
       
       // Success - redirect to feed

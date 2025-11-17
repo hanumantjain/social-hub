@@ -190,18 +190,22 @@ export const postsAPI = {
   },
 
   // Confirm upload and create post record
-  async confirmUpload(imageUrl: string, caption: string, title?: string, tags?: string): Promise<Post> {
+  async confirmUpload(imageUrl: string, caption: string, title?: string, tags?: string[]): Promise<Post> {
     const response = await authenticatedFetch(`${API_BASE_URL}/api/posts/confirm-upload`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ image_url: imageUrl, caption, title, tags }),
+      body: JSON.stringify({ image_url: imageUrl, caption, title, tags: tags || [] }),
     });
 
     if (!response.ok) {
-      const error: ApiError = await response.json();
-      throw new Error(error.detail || 'Failed to confirm upload');
+      const errorData = await response.json();
+      // Handle validation errors (422) - detail might be an array
+      const errorMessage = Array.isArray(errorData.detail) 
+        ? errorData.detail.map((e: any) => `${e.loc?.join('.')} ${e.msg}`).join(', ')
+        : (errorData.detail || 'Failed to confirm upload');
+      throw new Error(errorMessage);
     }
 
     return response.json();
